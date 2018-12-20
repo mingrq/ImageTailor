@@ -14,7 +14,7 @@ import android.support.v7.app.AlertDialog;
 
 /**
  * 获取权限
- *
+ *==================
  * Author MingRuQi
  * E-mail mingruqi@sina.cn
  * DateTime 2018/12/19 11:26

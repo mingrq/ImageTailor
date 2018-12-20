@@ -4,7 +4,9 @@ import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.view.View;
 
-import ming.com.circleimageview_lib.CircleImageView;
+import com.ming.circleimageview_lib.CircleImageView;
+import com.ming.imagetailor_lib.PickImageChooser;
+
 
 public class MainActivity extends AppCompatActivity {
 
@@ -18,7 +20,8 @@ public class MainActivity extends AppCompatActivity {
         circleImageView.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-
+                PickImageChooser pickImageChooser = new PickImageChooser();
+                pickImageChooser.startPickImageChooser(MainActivity.this);
             }
         });
     }
