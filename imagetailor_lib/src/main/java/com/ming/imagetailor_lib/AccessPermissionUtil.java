@@ -13,19 +13,23 @@ import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AlertDialog;
 
 /**
- * 获取权限
- *==================
+ * 权限检测工具
+ * ===================
  * Author MingRuQi
  * E-mail mingruqi@sina.cn
- * DateTime 2018/12/19 11:26
+ * DateTime 2018/12/19 11:32
  */
 
-public class AccessPermission {
+public class AccessPermissionUtil {
+
     /**
      * 使用系统相机请求代码
      */
     public static final int CAMERA_PERMISSIONS_REQUEST_CODE = 2011;
-
+    /**
+     * 向SD中写入数据权限请求代码
+     */
+   // public static final int WRITE_EXTERNAL_STORAGE_PERMISSIONS_REQUEST_CODE = 2012;
 
     /**
      * ---------------------------------------------------
@@ -34,7 +38,7 @@ public class AccessPermission {
     private RequestPerssionCallBack callBack;
     private int PERMISSIONS_REQUEST_CODE;
 
-    public AccessPermission(Activity activity) {
+    public AccessPermissionUtil(Activity activity) {
         this.activity = activity;
     }
 
@@ -65,6 +69,7 @@ public class AccessPermission {
 
     /**
      * 获取权限返回回执
+     *
      * @param requestCode
      * @param permissions
      * @param grantResults
@@ -94,7 +99,7 @@ public class AccessPermission {
                 dialog.dismiss();
             }
         });
-        dialog.setButton(AlertDialog.BUTTON_POSITIVE,"去设置", new DialogInterface.OnClickListener() {
+        dialog.setButton(AlertDialog.BUTTON_POSITIVE, "去设置", new DialogInterface.OnClickListener() {
             @Override
             public void onClick(DialogInterface dialo, int which) {
                 Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);

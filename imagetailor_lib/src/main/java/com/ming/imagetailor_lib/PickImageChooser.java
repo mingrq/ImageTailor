@@ -2,7 +2,11 @@ package com.ming.imagetailor_lib;
 
 import android.content.Context;
 import android.content.Intent;
+import android.os.Parcelable;
 import android.provider.MediaStore;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * 获取图片方式选择器
@@ -17,19 +21,20 @@ public class PickImageChooser {
 
     public Intent startPickImageChooser(Context context) {
         this.context = context;
-        //创建ChooserIntent
-        Intent intent = new Intent(Intent.ACTION_CHOOSER);
-//创建相机Intent
-        Intent captureIntent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
-        intent.putExtra(Intent.EXTRA_INITIAL_INTENTS, new Intent[]{captureIntent});
-
-//将相机Intent以数组形式放入Intent.EXTRA_INITIAL_INTENTS
-//创建相册Intent
-        Intent albumIntent = new Intent(Intent.ACTION_PICK, null);
-        albumIntent.setDataAndType(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, "image/*");
-//将相册Intent放入Intent.EXTRA_INTENT
-        intent.putExtra(Intent.EXTRA_INTENT, albumIntent);
-        context.startActivity(intent);
-        return intent;
+        List<Intent> intents = new ArrayList<>();
+        SelectImage selectImage = new SelectImage(context);
+        intents.addAll(selectImage.getImageIntent(Intent.ACTION_GET_CONTENT));
+        Intent intent_camera = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
+        intents.add(intent_camera);
+        Intent target;
+        if (intents.isEmpty()) {
+            target = new Intent();
+        } else {
+            target = intents.get(intents.size()-1);
+            intents.remove(intents.size()-1);
+        }
+        Intent chooser = Intent.createChooser(target, "打开图片方式");
+        chooser.putExtra(Intent.EXTRA_INITIAL_INTENTS, intents.toArray(new Parcelable[intents.size()]));
+        return chooser;
     }
 }
