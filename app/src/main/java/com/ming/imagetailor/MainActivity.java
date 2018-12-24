@@ -1,19 +1,21 @@
 package com.ming.imagetailor;
 
 import android.content.Intent;
+import android.os.Environment;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.view.View;
+import android.widget.ImageView;
 
-import com.ming.circleimageview_lib.CircleImageView;
 import com.ming.imagetailor_lib.ImageTailor;
 
 
 public class MainActivity extends AppCompatActivity {
 
-    private CircleImageView circleImageView;
+
+    private ImageView circleImageView;
     private ImageTailor imageTailor;
 
     @Override
@@ -21,11 +23,12 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         circleImageView = findViewById(R.id.circleImage);
-        imageTailor = new ImageTailor(MainActivity.this);
+        imageTailor = new ImageTailor(MainActivity.this, circleImageView);
         circleImageView.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                imageTailor.tailor();
+                imageTailor.setCameraFilePath(Environment.getExternalStorageDirectory().toString());
+                imageTailor.commit();
             }
         });
     }

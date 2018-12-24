@@ -1,12 +1,17 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.ming.imagetailor_lib" >
-    <uses-permission android:name="android.permission.CAMERA"/>
-    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
+    <!--调用系统相机权限-->
+    <uses-permission android:name="android.permission.CAMERA" />
+    <!--向SD中写入数据权限-->
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+    <!--从SD中读取数据权限-->
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+
     <application>
 
         <provider
             android:name="android.support.v4.content.FileProvider"
-            android:authorities="${applicationId}.imagePicker.provider"
+            android:authorities="${applicationId}"
             android:exported="false"
             android:grantUriPermissions="true">
             <meta-data

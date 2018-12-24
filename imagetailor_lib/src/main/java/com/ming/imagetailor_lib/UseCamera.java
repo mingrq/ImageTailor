@@ -3,6 +3,8 @@ package com.ming.imagetailor_lib;
 import android.app.Activity;
 import android.content.Intent;
 import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.net.Uri;
 import android.os.Bundle;
 import android.provider.MediaStore;
 import android.support.annotation.NonNull;
@@ -20,99 +22,41 @@ import static android.app.Activity.RESULT_OK;
  */
 public class UseCamera {
     public static final int CAMERA_PERMISSIONS_REQUEST_CODE = 2011;
-    private final int PHOTOGRAPH = 0;//拍照并返回照片
-    private final int PHOTOGRAPHSAVE = 1;//拍照并将照片保存到本地
-
-
-    private AccessPermissionUtil permissionUtil;
-    private PhotographCallBack callBack;
-    private Activity activity;
     private String imagePath;//照片存储路径
+    private Uri imageUri;//照片存储路径
+
+    private Activity activity;
     private Intent intent;
 
-    public UseCamera(Activity activity, PhotographCallBack callBack) {
-        this.callBack = callBack;
+    public UseCamera(Activity activity) {
         this.activity = activity;
     }
 
-    /**
-     * 开始拍照
-     *
-     * @return
-     */
-    private Intent startPhotograph(final int type) {
-        intent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
-        if (type == PHOTOGRAPHSAVE) {
-            intent.putExtra(MediaStore.EXTRA_OUTPUT, imagePath);
-        }
-        return intent;
-    }
 
     /**
      * ------------------------------------------------------------------------------------
      */
-
-
     /**
-     * 拍照并返回照片
+     * 获取拍照后照片的Uri
      *
-     * @return 拍照后获取的位图
+     * @return
      */
-    public Intent Photograph() {
-        return startPhotograph(PHOTOGRAPH);
+    public String getImagePath() {
+        return imagePath;
     }
-
 
     /**
      * 拍照并存储到本地
      *
      * @param imagePath 存储地址
-     * @return 是否保存成功
      */
-    public Intent Photograph(final String imagePath) {
-        return startPhotograph(PHOTOGRAPHSAVE);
+    public Intent Photograph(String imagePath) {
+        this.imageUri = Utils.getIntentUri(activity, Uri.parse(imagePath));
+        this.imagePath = imagePath;
+        intent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
+        intent.putExtra(MediaStore.EXTRA_OUTPUT, imageUri);
+        return intent;
     }
 
 
-    /**
-     * 使用系统相机获取照片的回执
-     *
-     * @param requestCode
-     * @param resultCode
-     * @param data
-     */
-    public void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
-        if (requestCode == CAMERA_PERMISSIONS_REQUEST_CODE) {
-            if (resultCode == RESULT_OK) {
-                Bundle bundle = data.getExtras();
-                Bitmap bitmap = (Bitmap) bundle.get("data");
-                callBack.Success(bitmap);
-            } else if (resultCode == RESULT_CANCELED) {
-                callBack.Cancel();
-            } else {
-                callBack.Failure(data);
-            }
-        }
-    }
-
-    /**
-     * 使用系统相机的回调
-     */
-    public interface PhotographCallBack {
-
-        /**
-         * 获取照片失败时操作
-         */
-        void Failure(Intent data);
-
-        /**
-         * 取消拍照
-         */
-        void Cancel();
-
-        /**
-         * 获取照片成功时才做
-         */
-        void Success(Bitmap bitmap);
-    }
 }

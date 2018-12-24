@@ -2,16 +2,23 @@ package com.ming.imagetailor_lib;
 
 import android.Manifest;
 import android.app.Activity;
-import android.content.Context;
 import android.content.Intent;
 import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.net.Uri;
 import android.os.Build;
+import android.os.Environment;
 import android.os.Parcelable;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
+import android.widget.ImageView;
 
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.util.ArrayList;
 import java.util.List;
+
+import static android.app.Activity.RESULT_OK;
 
 /**
  * 图片自由裁剪工具类
@@ -25,20 +32,27 @@ public class ImageTailor {
     private Activity activity;
     private final AccessPermissionUtil accessPermissionUtil;
     private UseCamera useCamera;
+    ImageView circleImageView;
 
-    public ImageTailor(Activity activity) {
+    String cameraFilePath = Environment.getExternalStorageDirectory().toString();//照片保存路径
+
+    public ImageTailor(Activity activity, ImageView circleImageView) {
         this.activity = activity;
+        this.circleImageView = circleImageView;
         accessPermissionUtil = new AccessPermissionUtil(activity);
     }
 
-    public void tailor() {
+    /**
+     * 开始选择照片
+     */
+    private void tailor() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
             startChooser();
         } else {
             accessPermissionUtil.checkPermissions(new AccessPermissionUtil.RequestPerssionCallBack() {
                 @Override
                 public void onPermissionDenied(int requestCode, String[] permissions) {
-
+                    //拒绝权限获取
                 }
 
                 @Override
@@ -73,23 +87,8 @@ public class ImageTailor {
         List<Intent> intents = new ArrayList<>();
         SelectImage selectImage = new SelectImage(activity);
         intents.addAll(selectImage.getImageIntent(Intent.ACTION_GET_CONTENT));
-        useCamera = new UseCamera(activity, new UseCamera.PhotographCallBack() {
-            @Override
-            public void Failure(Intent data) {
-
-            }
-
-            @Override
-            public void Cancel() {
-
-            }
-
-            @Override
-            public void Success(Bitmap bitmap) {
-
-            }
-        });
-        Intent intent_camera = useCamera.Photograph();
+        useCamera = new UseCamera(activity);
+        Intent intent_camera = useCamera.Photograph(cameraFilePath + "/" + System.currentTimeMillis() + ".jpg");
         intents.add(intent_camera);
         Intent target;
         if (intents.isEmpty()) {
@@ -104,17 +103,54 @@ public class ImageTailor {
     }
 
     /**
+     * 设置照片保存路径
+     *
+     * @param cameraFilePath /storage/emulated/0
+     */
+    public void setCameraFilePath(String cameraFilePath) {
+        this.cameraFilePath = cameraFilePath;
+    }
+
+    /**
+     * 提交使用选择器选取图片裁剪
+     */
+    public void commit() {
+        tailor();
+    }
+
+    /**
      * 使用系统相机获取照片的回执
      *
-     * @param requestCode
+     * @param requestCode:返回
      * @param resultCode
      * @param data
      */
     public void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
-        if (requestCode == UseCamera.CAMERA_PERMISSIONS_REQUEST_CODE) {
-            useCamera.onActivityResult(requestCode, resultCode, data);
-        } else {
+        if (requestCode == PICK_IMAGE_CHOOSER_REQUEST_CODE) {
+            if (resultCode == RESULT_OK) {
+                final String imagePath = Utils.getImagePath(useCamera, data);
+                //检测是否有读取sd卡的权限
+                accessPermissionUtil.checkPermissions(new AccessPermissionUtil.RequestPerssionCallBack() {
+                    @Override
+                    public void onPermissionDenied(int requestCode, String[] permissions) {
+                        //拒绝权限获取
+                    }
 
+                    @Override
+                    public void onPermissionAllow(int requestCode, String[] permissions) {
+                        //权限获取成功
+                        try {
+                            FileInputStream fileInputStream = new FileInputStream(imagePath);
+                            Bitmap bitmap = BitmapFactory.decodeStream(fileInputStream);
+                            circleImageView.setImageBitmap(bitmap);
+                        } catch (FileNotFoundException e) {
+                            e.printStackTrace();
+                        }
+                    }
+                }, Manifest.permission.READ_EXTERNAL_STORAGE);
+            }
         }
     }
+
+
 }

@@ -48,7 +48,7 @@ public class AccessPermissionUtil {
     /**
      * 获取权限
      */
-    protected void checkPermissions(RequestPerssionCallBack callBack, String... permission) {
+    protected synchronized void checkPermissions(RequestPerssionCallBack callBack, String... permission) {
         this.callBack = callBack;
         List<String> permissionList = new ArrayList<>();
         for (int i = 0; i < permission.length; i++) {
