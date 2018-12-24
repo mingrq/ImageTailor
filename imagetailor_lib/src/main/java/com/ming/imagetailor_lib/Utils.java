@@ -45,7 +45,7 @@ public class Utils {
      * @param data
      * @return
      */
-    public static String getImagePath(UseCamera useCamera, Intent data) {
+    public static Uri getImagePath(UseCamera useCamera, Intent data) {
         boolean isCamera = true;
         if (data != null && data.getAction() != null) {
             //不是相机拍照
@@ -53,7 +53,6 @@ public class Utils {
             isCamera = action != null && action.equals(MediaStore.ACTION_IMAGE_CAPTURE);
         }
         //是相机拍照在拍照工具类中获取Uri，不是相机拍照从Intent中获取Uri
-        String url = data.getData().toString();
-        return isCamera || data.getData() == null ? useCamera.getImagePath() : url;
+        return isCamera || data.getData() == null ? useCamera.getImageUri() : data.getData();
     }
 }

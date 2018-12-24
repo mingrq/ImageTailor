@@ -5,6 +5,7 @@ import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.provider.MediaStore;
 import android.support.annotation.NonNull;
@@ -41,8 +42,8 @@ public class UseCamera {
      *
      * @return
      */
-    public String getImagePath() {
-        return imagePath;
+    public Uri getImageUri() {
+        return imageUri;
     }
 
     /**
@@ -54,7 +55,12 @@ public class UseCamera {
         this.imageUri = Utils.getIntentUri(activity, Uri.parse(imagePath));
         this.imagePath = imagePath;
         intent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
-        intent.putExtra(MediaStore.EXTRA_OUTPUT, imageUri);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            intent.putExtra(MediaStore.EXTRA_OUTPUT, imageUri);
+        }else {
+            intent.putExtra(MediaStore.EXTRA_OUTPUT, Uri.parse(imagePath));
+        }
+
         return intent;
     }
 

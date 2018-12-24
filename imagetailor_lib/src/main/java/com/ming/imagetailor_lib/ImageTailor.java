@@ -11,6 +11,7 @@ import android.os.Environment;
 import android.os.Parcelable;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
+import android.util.Log;
 import android.widget.ImageView;
 
 import java.io.FileInputStream;
@@ -128,7 +129,7 @@ public class ImageTailor {
     public void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
         if (requestCode == PICK_IMAGE_CHOOSER_REQUEST_CODE) {
             if (resultCode == RESULT_OK) {
-                final String imagePath = Utils.getImagePath(useCamera, data);
+                 final Uri imageUri = Utils.getImagePath(useCamera, data);
                 //检测是否有读取sd卡的权限
                 accessPermissionUtil.checkPermissions(new AccessPermissionUtil.RequestPerssionCallBack() {
                     @Override
@@ -139,13 +140,8 @@ public class ImageTailor {
                     @Override
                     public void onPermissionAllow(int requestCode, String[] permissions) {
                         //权限获取成功
-                        try {
-                            FileInputStream fileInputStream = new FileInputStream(imagePath);
-                            Bitmap bitmap = BitmapFactory.decodeStream(fileInputStream);
-                            circleImageView.setImageBitmap(bitmap);
-                        } catch (FileNotFoundException e) {
-                            e.printStackTrace();
-                        }
+                        //解析Uri获取图片路径
+                        Log.e("test",imageUri.toString());
                     }
                 }, Manifest.permission.READ_EXTERNAL_STORAGE);
             }
