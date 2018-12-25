@@ -14,6 +14,7 @@ import com.ming.imagetailor_lib.R;
  * DateTime 2018/12/24 16:08
  */
 public class CropImageActivity extends AppCompatActivity {
+
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);

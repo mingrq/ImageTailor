@@ -45,14 +45,15 @@ public class Utils {
      * @param data
      * @return
      */
-    public static Uri getImagePath(UseCamera useCamera, Intent data) {
+    public static Uri getPickImageResultUri(UseCamera useCamera, Intent data) {
+
         boolean isCamera = true;
-        if (data != null && data.getAction() != null) {
-            //不是相机拍照
+        Uri uri = null;
+        if (data != null && data.getData() != null) {
             String action = data.getAction();
             isCamera = action != null && action.equals(MediaStore.ACTION_IMAGE_CAPTURE);
         }
-        //是相机拍照在拍照工具类中获取Uri，不是相机拍照从Intent中获取Uri
-        return isCamera || data.getData() == null ? useCamera.getImageUri() : data.getData();
+        uri=isCamera || data.getData() == null ? useCamera.getImageUri() : data.getData();
+        return uri;
     }
 }

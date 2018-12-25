@@ -11,6 +11,8 @@ import android.provider.MediaStore;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 
+import java.io.File;
+
 import static android.app.Activity.RESULT_CANCELED;
 import static android.app.Activity.RESULT_OK;
 
@@ -43,7 +45,7 @@ public class UseCamera {
      * @return
      */
     public Uri getImageUri() {
-        return imageUri;
+        return Uri.fromFile(new File(imagePath));
     }
 
     /**
