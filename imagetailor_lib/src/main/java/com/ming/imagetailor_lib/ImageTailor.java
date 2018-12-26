@@ -18,6 +18,8 @@ import android.text.TextUtils;
 import android.util.Log;
 import android.widget.ImageView;
 
+import com.ming.imagetailor_lib.Activity.CropImageActivity;
+
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -38,13 +40,11 @@ public class ImageTailor {
     private Activity activity;
     private final AccessPermissionUtil accessPermissionUtil;
     private UseCamera useCamera;
-    ImageView circleImageView;
 
     String cameraFilePath = Environment.getExternalStorageDirectory().toString();//照片保存路径
 
-    public ImageTailor(Activity activity, ImageView circleImageView) {
+    public ImageTailor(Activity activity) {
         this.activity = activity;
-        this.circleImageView = circleImageView;
         accessPermissionUtil = new AccessPermissionUtil(activity);
     }
 
@@ -146,15 +146,9 @@ public class ImageTailor {
                     @Override
                     public void onPermissionAllow(int requestCode, String[] permissions) {
                         //权限获取成功
-                        try {
-                            FileInputStream fileInputStream = new FileInputStream(new File(imagepath.getPath()));
-                            Bitmap bitmap = BitmapFactory.decodeStream(fileInputStream);
-                            circleImageView.setImageBitmap(bitmap);
-                        } catch (FileNotFoundException e) {
-                            e.printStackTrace();
-                        }
-
-
+                        Intent intent = new Intent(activity, CropImageActivity.class);
+                        intent.setData(imagepath);
+                        activity.startActivity(intent);
                     }
                 }, Manifest.permission.READ_EXTERNAL_STORAGE);
             }

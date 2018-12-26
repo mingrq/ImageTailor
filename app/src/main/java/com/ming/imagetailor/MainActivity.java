@@ -24,7 +24,7 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         circleImageView = findViewById(R.id.circleImage);
-        imageTailor = new ImageTailor(MainActivity.this, circleImageView);
+        imageTailor = new ImageTailor(MainActivity.this);
         circleImageView.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
