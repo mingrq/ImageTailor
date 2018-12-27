@@ -211,6 +211,7 @@ public class CropOvalImageView extends View {
         canvas.drawLines(leftBottomPts, borderPaint);
         float rightBottomPts[] = {right - clipBorderLength, bottom, right, bottom, right, bottom, right, bottom - clipBorderLength};
         canvas.drawLines(rightBottomPts, borderPaint);
+        canvas.restore();
     }
 
     /**

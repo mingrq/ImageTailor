@@ -40,9 +40,9 @@ public class CropCircleImageView extends AppCompatImageView {
     //裁剪边框长度
     private int clipBorderLength = dp2px(16);
     //裁剪框边框宽度
-    private int clipBorderWidth = dp2px(2);
+    private int clipBorderWidth = dp2px(3);
     //裁剪框颜色
-    private int clipBorderColor = 0xffffff;
+    private int clipBorderColor = 0xAFFFFFFF;
     //裁剪框四角颜色
     private int clipBorderCornerColor = 0xffffff;
     //裁剪框线格颜色
@@ -74,7 +74,8 @@ public class CropCircleImageView extends AppCompatImageView {
     private final int ACTIONMOVE = 2;//滑动状态
     /*当前状态*/
     private int NowState = ACTIONUP;
-
+    //宽高比
+    float scale;
 
     public CropCircleImageView(Context context) {
         this(context, null);
@@ -109,8 +110,6 @@ public class CropCircleImageView extends AppCompatImageView {
     @Override
     protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
         super.onMeasure(widthMeasureSpec, heightMeasureSpec);
-        //宽高比
-        float scale;
         //获取初始宽度
         viewWidth = MeasureSpec.getSize(widthMeasureSpec);
         //获取初始高度
@@ -122,7 +121,6 @@ public class CropCircleImageView extends AppCompatImageView {
                 //宽大于高
                 rectLeft = initMargin;
                 rectRight = viewWidth - initMargin;
-
             } else if (widthScale - heightScale < 0) {
                 scale = heightScale / widthScale;
             } else {
@@ -152,6 +150,8 @@ public class CropCircleImageView extends AppCompatImageView {
         RectF rectF = new RectF(rect);
         drawBackground(canvas);
         drawOvalClipArea(canvas, rectF);
+        drawBorder(canvas, rectF);
+        drawNook(canvas, rectF);
     }
 
     /**
@@ -183,6 +183,47 @@ public class CropCircleImageView extends AppCompatImageView {
             //自由裁剪
 
         }
+    }
+
+    /**
+     * 绘制边框
+     */
+    private void drawBorder(Canvas canvas, RectF rectF) {
+        if (isConstant) {
+            //画裁剪区域边框的画笔
+            Paint borderPaint = new Paint();
+            borderPaint.setStyle(Paint.Style.STROKE);
+            borderPaint.setColor(clipBorderColor);
+            borderPaint.setStrokeWidth(clipBorderWidth);
+            borderPaint.setAntiAlias(true);
+            canvas.drawOval(rectF, borderPaint);
+        } else {
+
+        }
+
+    }
+
+    /**
+     * 绘制四角
+     *
+     * @param canvas
+     * @param rectF
+     */
+    private void drawNook(Canvas canvas, RectF rectF) {
+        Paint nookPaint = new Paint();
+        //绘制四角
+        float left = rectF.left;
+        float right = rectF.right;
+        float top = rectF.top;
+        float bottom = rectF.bottom;
+        float leftTopPts[] = {left, top + clipBorderLength, left, top, left, top, left + clipBorderLength, top};
+        canvas.drawLines(leftTopPts, nookPaint);
+        float rightTopPts[] = {right - clipBorderLength, top, right, top, right, top, right, top + clipBorderLength};
+        canvas.drawLines(rightTopPts, nookPaint);
+        float leftBottomPts[] = {left, bottom - clipBorderLength, left, bottom, left, bottom, left + clipBorderLength, bottom};
+        canvas.drawLines(leftBottomPts, nookPaint);
+        float rightBottomPts[] = {right - clipBorderLength, bottom, right, bottom, right, bottom, right, bottom - clipBorderLength};
+        canvas.drawLines(rightBottomPts, nookPaint);
     }
 
     private Bitmap getBitmap(Drawable drawable) {
