@@ -8,6 +8,7 @@ import android.support.annotation.Nullable;
 import android.support.v7.app.AppCompatActivity;
 import android.widget.ImageView;
 
+import com.ming.imagetailor_lib.CustomView.CropCircleImageView;
 import com.ming.imagetailor_lib.R;
 
 import java.io.File;
@@ -27,7 +28,8 @@ public class CropImageActivity extends AppCompatActivity {
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_cropimage);
-        ImageView imageView = findViewById(R.id.cropImage);
+       /* ImageView imageView = findViewById(R.id.cropImage);*/
+        CropCircleImageView imageView = findViewById(R.id.circle);
         Uri imagepath = getIntent().getData();
         try {
             FileInputStream fileInputStream = new FileInputStream(new File(imagepath.getPath()));

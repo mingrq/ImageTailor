@@ -3,12 +3,13 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
-    <ImageView
+  <!--  <ImageView
         android:id="@+id/cropImage"
         android:layout_width="match_parent"
-        android:layout_height="match_parent" />
+        android:layout_height="match_parent" />-->
 
-    <com.ming.imagetailor_lib.CustomView.CropOvalImageView
+    <com.ming.imagetailor_lib.CustomView.CropCircleImageView
+        android:id="@+id/circle"
         android:layout_width="match_parent"
         android:layout_height="match_parent" />
 </RelativeLayout>
