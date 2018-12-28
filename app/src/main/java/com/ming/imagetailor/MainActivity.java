@@ -25,10 +25,15 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
         circleImageView = findViewById(R.id.circleImage);
         imageTailor = new ImageTailor(MainActivity.this);
+        imageTailor.setCameraFilePath(Environment.getExternalStorageDirectory().toString());
+        //设置裁剪类型
+        imageTailor.setClipType(ImageTailor.TYPEFIXEDOVAL);
+        //imageTailor.setClipType(ImageTailor.TYPEFIXEDOSQUARE);
+        //设置裁剪比例
+       // imageTailor.setWidthHeightScale(2, 1);
         circleImageView.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                imageTailor.setCameraFilePath(Environment.getExternalStorageDirectory().toString());
                 imageTailor.commit();
             }
         });
@@ -43,6 +48,6 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
-       imageTailor.onActivityResult(requestCode, resultCode, data);
+        imageTailor.onActivityResult(requestCode, resultCode, data);
     }
 }

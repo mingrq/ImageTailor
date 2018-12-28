@@ -5,8 +5,6 @@ import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
 import android.database.Cursor;
-import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Environment;
@@ -15,14 +13,10 @@ import android.provider.MediaStore;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.text.TextUtils;
-import android.util.Log;
-import android.widget.ImageView;
 
 import com.ming.imagetailor_lib.Activity.CropImageActivity;
 
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -36,17 +30,115 @@ import static android.app.Activity.RESULT_OK;
  * DateTime 2018/12/22 10:16
  */
 public class ImageTailor {
+    /**
+     * 裁剪类型
+     */
+    //固定比例椭圆
+    public static final int TYPEFIXEDOVAL = 0x0001;
+    //固定比例矩形
+    public static final int TYPEFIXEDOSQUARE = 0x0002;
+    //矩形
+    public static final int TYPESQUARE = 0x0003;
+    //椭圆
+    public static final int TYPEOVAL = 0x0004;
+
+
     public static final int PICK_IMAGE_CHOOSER_REQUEST_CODE = 200;
     private Activity activity;
     private final AccessPermissionUtil accessPermissionUtil;
     private UseCamera useCamera;
 
     String cameraFilePath = Environment.getExternalStorageDirectory().toString();//照片保存路径
+    private final ClipInfo clipInfo;
 
     public ImageTailor(Activity activity) {
         this.activity = activity;
         accessPermissionUtil = new AccessPermissionUtil(activity);
+        clipInfo = new ClipInfo();
     }
+
+    /**
+     * 设置宽高比例
+     *
+     * @param widthScale
+     * @param heightScale
+     */
+    public void setWidthHeightScale(int widthScale, int heightScale) {
+        clipInfo.setWidthHeightScale(widthScale, heightScale);
+    }
+
+    /**
+     * 设置裁剪类型
+     *
+     * @param clipType
+     */
+    public void setClipType(int clipType) {
+        clipInfo.setClipType(clipType);
+    }
+
+
+    /**
+     * 获取权限返回回执
+     *
+     * @param requestCode
+     * @param permissions
+     * @param grantResults
+     */
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        accessPermissionUtil.onRequestPermissionsResult(requestCode, permissions, grantResults);
+    }
+
+    /**
+     * 设置照片保存路径
+     *
+     * @param cameraFilePath /storage/emulated/0
+     */
+    public void setCameraFilePath(String cameraFilePath) {
+        this.cameraFilePath = cameraFilePath;
+    }
+
+    /**
+     * 提交使用选择器选取图片裁剪
+     */
+    public void commit() {
+        tailor();
+    }
+
+    /**
+     * 使用系统相机获取照片的回执
+     *
+     * @param requestCode:返回
+     * @param resultCode
+     * @param data
+     */
+    public void onActivityResult(int requestCode, int resultCode, @Nullable final Intent data) {
+        if (requestCode == PICK_IMAGE_CHOOSER_REQUEST_CODE) {
+            if (resultCode == RESULT_OK) {
+                final Uri imageUri = Utils.getPickImageResultUri(useCamera, data);
+                final Uri imagepath = handleUri(activity, imageUri);
+                //检测是否有读取sd卡的权限
+                accessPermissionUtil.checkPermissions(new AccessPermissionUtil.RequestPerssionCallBack() {
+                    @Override
+                    public void onPermissionDenied(int requestCode, String[] permissions) {
+                        //拒绝权限获取
+                    }
+
+                    @Override
+                    public void onPermissionAllow(int requestCode, String[] permissions) {
+                        //权限获取成功
+                        Intent intent = new Intent(activity, CropImageActivity.class);
+                        intent.setData(imagepath);
+                        intent.putExtra("clipInfo", clipInfo);
+                        activity.startActivity(intent);
+                    }
+                }, Manifest.permission.READ_EXTERNAL_STORAGE);
+            }
+        }
+    }
+
+    /**
+     * ---------------------------------------------------------------------------------------------------------------------
+     */
 
     /**
      * 开始选择照片
@@ -79,16 +171,10 @@ public class ImageTailor {
     }
 
     /**
-     * 获取权限返回回执
+     * 获取图片选择器
      *
-     * @param requestCode
-     * @param permissions
-     * @param grantResults
+     * @return
      */
-    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
-        accessPermissionUtil.onRequestPermissionsResult(requestCode, permissions, grantResults);
-    }
-
     protected Intent startPickImageChooser() {
         List<Intent> intents = new ArrayList<>();
         SelectImage selectImage = new SelectImage(activity);
@@ -108,53 +194,14 @@ public class ImageTailor {
         return chooser;
     }
 
+
     /**
-     * 设置照片保存路径
+     * 获取content：//格式的uri
      *
-     * @param cameraFilePath /storage/emulated/0
+     * @param context
+     * @param imageUri
+     * @return
      */
-    public void setCameraFilePath(String cameraFilePath) {
-        this.cameraFilePath = cameraFilePath;
-    }
-
-    /**
-     * 提交使用选择器选取图片裁剪
-     */
-    public void commit() {
-        tailor();
-    }
-
-    /**
-     * 使用系统相机获取照片的回执
-     *
-     * @param requestCode:返回
-     * @param resultCode
-     * @param data
-     */
-    public void onActivityResult(int requestCode, int resultCode, @Nullable final Intent data) {
-        if (requestCode == PICK_IMAGE_CHOOSER_REQUEST_CODE) {
-            if (resultCode == RESULT_OK) {
-                final Uri imageUri = Utils.getPickImageResultUri(useCamera, data);
-                final Uri imagepath = handleUri(activity,imageUri);
-                //检测是否有读取sd卡的权限
-                accessPermissionUtil.checkPermissions(new AccessPermissionUtil.RequestPerssionCallBack() {
-                    @Override
-                    public void onPermissionDenied(int requestCode, String[] permissions) {
-                        //拒绝权限获取
-                    }
-
-                    @Override
-                    public void onPermissionAllow(int requestCode, String[] permissions) {
-                        //权限获取成功
-                        Intent intent = new Intent(activity, CropImageActivity.class);
-                        intent.setData(imagepath);
-                        activity.startActivity(intent);
-                    }
-                }, Manifest.permission.READ_EXTERNAL_STORAGE);
-            }
-        }
-    }
-
     private Uri handleUri(Context context, Uri imageUri) {
         if ("content".equals(imageUri.getScheme())) {
             String realPath = getRealPathFromUri(context, imageUri);
