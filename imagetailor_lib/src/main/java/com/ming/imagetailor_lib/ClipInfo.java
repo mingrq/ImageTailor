@@ -9,22 +9,22 @@ import java.io.Serializable;
  */
 public class ClipInfo implements Serializable{
     //设置宽度比例
-    private int widthScale;
+    private float widthScale;
     //设置高度比例
-    private int heightScale;
+    private float heightScale;
     //裁剪类型
     private int clipType;
 
-    public int getWidthScale() {
+    public float getWidthScale() {
         return widthScale;
     }
 
-    public void setWidthHeightScale(int widthScale, int heightScale) {
+    public void setWidthHeightScale(float widthScale, float heightScale) {
         this.widthScale = widthScale;
         this.heightScale = heightScale;
     }
 
-    public int getHeightScale() {
+    public float getHeightScale() {
         return heightScale;
     }
 

@@ -63,7 +63,7 @@ public class ImageTailor {
      * @param widthScale
      * @param heightScale
      */
-    public void setWidthHeightScale(int widthScale, int heightScale) {
+    public void setWidthHeightScale(float widthScale, float heightScale) {
         clipInfo.setWidthHeightScale(widthScale, heightScale);
     }
 

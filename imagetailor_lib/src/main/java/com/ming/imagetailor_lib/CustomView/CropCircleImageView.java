@@ -4,6 +4,7 @@ import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
+import android.graphics.Matrix;
 import android.graphics.Paint;
 import android.graphics.Path;
 import android.graphics.PorterDuff;
@@ -48,9 +49,9 @@ public class CropCircleImageView extends AppCompatImageView {
     //是否是固定比例的
     private boolean isConstant = true;
     //设置宽度比例
-    private int widthScale = 1;
+    private float widthScale = 1f;
     //设置高度比例
-    private int heightScale = 1;
+    private float heightScale = 1f;
     //裁剪边框四角长度
     private int clipBorderLength = dp2px(14);
     //裁剪框边框宽度
@@ -96,7 +97,7 @@ public class CropCircleImageView extends AppCompatImageView {
     private int ratioType;
     private final int RATIO_WIDTH = 0x000482;//宽大于高
     private final int RATIO_HEIGHT = 0x000483;//宽小于高
-    private final int RATIO_EQUAL = 0x000484;//宽小于高
+    private final int RATIO_EQUAL = 0x000484;//宽等于高
     //四角边距
     private int clipBorderCornerMargin = dp2px(10);
     //是否是缩放 true：缩放 false：移动
@@ -114,6 +115,8 @@ public class CropCircleImageView extends AppCompatImageView {
     private final int SCALE_TOP = 0x000008;//缩放上边
     private final int SCALE_RIGHT = 0x000006;//缩放右边
     private final int SCALE_BOTTOM = 0x000002;//缩放下边
+    private int bitmapWidth;//图片宽度
+    private int bitmapHeight;//图片高度
 
 
     public CropCircleImageView(Context context) {
@@ -135,7 +138,7 @@ public class CropCircleImageView extends AppCompatImageView {
      * @param widthScale
      * @param heightScale
      */
-    public void setWidthHeightScale(int widthScale, int heightScale) {
+    public void setWidthHeightScale(float widthScale, float heightScale) {
         this.widthScale = widthScale;
         this.heightScale = heightScale;
     }
@@ -190,12 +193,17 @@ public class CropCircleImageView extends AppCompatImageView {
     @Override
     protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
         super.onMeasure(widthMeasureSpec, heightMeasureSpec);
-        Rect rect = getDrawable().getBounds();
-        Log.e("图片位置", rect.left + " " + rect.top + " " + rect.right + " " + rect.bottom);
+        /**
+         * 获取图片信息
+         */
+        Bitmap bitmap = getBitmap(getDrawable());
+        bitmapWidth = bitmap.getWidth();
+        bitmapHeight = bitmap.getHeight();
         //获取初始宽度
         viewWidth = MeasureSpec.getSize(widthMeasureSpec);
         //获取初始高度
         viewHeight = MeasureSpec.getSize(heightMeasureSpec);
+
         //初始化裁剪区位置
         if (isConstant) {
             //固定比例
@@ -204,25 +212,40 @@ public class CropCircleImageView extends AppCompatImageView {
                 ratio = widthScale / heightScale;
                 //宽大于高
                 rectLeft = initMargin;
-                rectRight = viewWidth - initMargin;
+                rectRight = viewWidth - rectLeft;
+                float clipHeight = (rectRight - rectLeft) / ratio;//裁剪区高度
+                rectTop = (viewHeight - clipHeight) / 2;
+                rectBottom = viewHeight - rectTop;
             } else if (widthScale - heightScale < 0) {
                 ratioType = RATIO_HEIGHT;
                 ratio = heightScale / widthScale;
+                //宽小于高
+                float clipHeight = viewHeight / 2;//裁剪区高度
+                rectTop = (viewHeight - clipHeight) / 2;
+                rectBottom = viewHeight - rectTop;
+                float clipWidth = clipHeight / ratio;
+                rectLeft = (viewWidth - clipWidth) / 2;
+                rectRight = viewWidth - rectLeft;
             }
         }
         if (!isConstant || widthScale - heightScale == 0) {
             //不固定比例或宽高相等
             ratioType = RATIO_EQUAL;
             rectLeft = initMargin;
-            rectRight = viewWidth - initMargin;
+            rectRight = viewWidth - rectLeft;
             rectTop = (viewHeight - (rectRight - rectLeft)) / 2;
             rectBottom = viewHeight - rectTop;
         }
     }
 
+
     @Override
     protected void onDraw(Canvas canvas) {
-        super.onDraw(canvas);
+       super.onDraw(canvas);
+
+
+
+
        /*  Bitmap bitmap = getBitmap(getDrawable());
        if (bitmap != null) {
 
@@ -240,6 +263,12 @@ public class CropCircleImageView extends AppCompatImageView {
         }
     }
 
+    private void test(Canvas canvas, RectF rectF) {
+        Paint paint = new Paint();
+        paint.setAntiAlias(true);
+        paint.setColor(Color.WHITE);
+        canvas.drawRect(rectF, paint);
+    }
 
     /**
      * 根据手指动作调整裁剪区
@@ -253,7 +282,6 @@ public class CropCircleImageView extends AppCompatImageView {
             rectRight += oneMoveX;
         } else {
             //缩放
-
             switch (scaleType) {
                 case SCALE_LEFTBOTTOM://缩放左下角
                     if (isConstant) {
@@ -264,17 +292,18 @@ public class CropCircleImageView extends AppCompatImageView {
                                 rectBottom -= oneMoveX;
                                 break;
                             case RATIO_HEIGHT:
+                                rectLeft += oneMoveX;
+                                rectBottom -= oneMoveX * ratio;
                                 break;
                             case RATIO_WIDTH:
+                                rectLeft += oneMoveX * ratio;
+                                rectBottom -= oneMoveX;
                                 break;
                         }
-
-                        //rectTop =;
-                        //rectBottom += oneMoveY;
-                        //rectLeft += oneMoveX;
-                        //rectRight += oneMoveX;
                     } else {
                         //不固定比例
+                        rectLeft += oneMoveX;
+                        rectBottom += oneMoveY;
                     }
                     break;
                 case SCALE_LEFTTOP://缩放左上角
@@ -286,17 +315,18 @@ public class CropCircleImageView extends AppCompatImageView {
                                 rectTop += oneMoveX;
                                 break;
                             case RATIO_HEIGHT:
+                                rectLeft += oneMoveX;
+                                rectTop += oneMoveX * ratio;
                                 break;
                             case RATIO_WIDTH:
+                                rectLeft += oneMoveX * ratio;
+                                rectTop += oneMoveX;
                                 break;
                         }
-
-                        //rectTop =;
-                        //rectBottom += oneMoveY;
-                        //rectLeft += oneMoveX;
-                        //rectRight += oneMoveX;
                     } else {
                         //不固定比例
+                        rectLeft += oneMoveX;
+                        rectTop += oneMoveY;
                     }
                     break;
                 case SCALE_RIGHTTOP://缩放右上角
@@ -308,17 +338,18 @@ public class CropCircleImageView extends AppCompatImageView {
                                 rectTop -= oneMoveX;
                                 break;
                             case RATIO_HEIGHT:
+                                rectRight += oneMoveX;
+                                rectTop -= oneMoveX * ratio;
                                 break;
                             case RATIO_WIDTH:
+                                rectRight += oneMoveX * ratio;
+                                rectTop -= oneMoveX;
                                 break;
                         }
-
-                        //rectTop =;
-                        //rectBottom += oneMoveY;
-                        //rectLeft += oneMoveX;
-                        //rectRight += oneMoveX;
                     } else {
                         //不固定比例
+                        rectRight += oneMoveX;
+                        rectTop += oneMoveY;
                     }
                     break;
                 case SCALE_RIGHTBOTTOM://缩放右下角
@@ -330,17 +361,18 @@ public class CropCircleImageView extends AppCompatImageView {
                                 rectBottom += oneMoveX;
                                 break;
                             case RATIO_HEIGHT:
+                                rectRight += oneMoveX;
+                                rectBottom += oneMoveX * ratio;
                                 break;
                             case RATIO_WIDTH:
+                                rectRight += oneMoveX * ratio;
+                                rectBottom += oneMoveX;
                                 break;
                         }
-
-                        //rectTop =;
-                        //rectBottom += oneMoveY;
-                        //rectLeft += oneMoveX;
-                        //rectRight += oneMoveX;
                     } else {
                         //不固定比例
+                        rectRight += oneMoveX;
+                        rectBottom += oneMoveY;
                     }
                     break;
                 case SCALE_LEFT://缩放左边
@@ -353,17 +385,19 @@ public class CropCircleImageView extends AppCompatImageView {
                                 rectBottom -= oneMoveX / 2;
                                 break;
                             case RATIO_HEIGHT:
+                                rectLeft += oneMoveX;
+                                rectTop += (oneMoveX * ratio) / 2;
+                                rectBottom -= (oneMoveX * ratio) / 2;
                                 break;
                             case RATIO_WIDTH:
+                                rectLeft += oneMoveX * ratio;
+                                rectTop += oneMoveX / 2;
+                                rectBottom -= oneMoveX / 2;
                                 break;
                         }
-
-                        //rectTop =;
-                        //rectBottom += oneMoveY;
-                        //rectLeft += oneMoveX;
-                        //rectRight += oneMoveX;
                     } else {
                         //不固定比例
+                        rectLeft += oneMoveX;
                     }
                     break;
                 case SCALE_TOP://缩放上边
@@ -376,17 +410,19 @@ public class CropCircleImageView extends AppCompatImageView {
                                 rectLeft += oneMoveY / 2;
                                 break;
                             case RATIO_HEIGHT:
+                                rectRight -= oneMoveY / 2;
+                                rectTop += oneMoveY * ratio;
+                                rectLeft += oneMoveY / 2;
                                 break;
                             case RATIO_WIDTH:
+                                rectRight -= (oneMoveY * ratio) / 2;
+                                rectTop += oneMoveY;
+                                rectLeft += (oneMoveY * ratio) / 2;
                                 break;
                         }
-
-                        //rectTop =;
-                        //rectBottom += oneMoveY;
-                        //rectLeft += oneMoveX;
-                        //rectRight += oneMoveX;
                     } else {
                         //不固定比例
+                        rectTop += oneMoveY;
                     }
                     break;
                 case SCALE_RIGHT://缩放右边
@@ -399,17 +435,19 @@ public class CropCircleImageView extends AppCompatImageView {
                                 rectTop -= oneMoveX / 2;
                                 break;
                             case RATIO_HEIGHT:
+                                rectRight += oneMoveX;
+                                rectBottom += (oneMoveX * ratio) / 2;
+                                rectTop -= (oneMoveX * ratio) / 2;
                                 break;
                             case RATIO_WIDTH:
+                                rectRight += oneMoveX * ratio;
+                                rectBottom += oneMoveX / 2;
+                                rectTop -= oneMoveX / 2;
                                 break;
                         }
-
-                        //rectTop =;
-                        //rectBottom += oneMoveY;
-                        //rectLeft += oneMoveX;
-                        //rectRight += oneMoveX;
                     } else {
                         //不固定比例
+                        rectRight += oneMoveX;
                     }
                     break;
                 case SCALE_BOTTOM://缩放下边
@@ -422,21 +460,22 @@ public class CropCircleImageView extends AppCompatImageView {
                                 rectLeft -= oneMoveY / 2;
                                 break;
                             case RATIO_HEIGHT:
+                                rectRight += oneMoveY / 2;
+                                rectBottom += oneMoveY * ratio;
+                                rectLeft -= oneMoveY / 2;
                                 break;
                             case RATIO_WIDTH:
+                                rectRight += (oneMoveY * ratio) / 2;
+                                rectBottom += oneMoveY;
+                                rectLeft -= (oneMoveY * ratio) / 2;
                                 break;
                         }
-
-                        //rectTop =;
-                        //rectBottom += oneMoveY;
-                        //rectLeft += oneMoveX;
-                        //rectRight += oneMoveX;
                     } else {
                         //不固定比例
+                        rectBottom += oneMoveY;
                     }
                     break;
             }
-
         }
     }
 
