@@ -42,13 +42,13 @@ public class CropImageActivity extends AppCompatActivity {
         imageView.setWidthHeightScale(clipInfo.getWidthScale(),clipInfo.getHeightScale());
 
        /* ImageView imageView = findViewById(R.id.cropImage);*/
-
-        try {
+        imageView.setImageURI(imagepath);
+      /*  try {
             FileInputStream fileInputStream = new FileInputStream(new File(imagepath.getPath()));
             Bitmap bitmap = BitmapFactory.decodeStream(fileInputStream);
             imageView.setImageBitmap(bitmap);
         } catch (FileNotFoundException e) {
             e.printStackTrace();
-        }
+        }*/
     }
 }

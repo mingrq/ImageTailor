@@ -18,7 +18,6 @@ import android.graphics.drawable.Drawable;
 import android.os.Build;
 import android.support.v7.widget.AppCompatImageView;
 import android.util.AttributeSet;
-import android.util.Log;
 import android.util.TypedValue;
 import android.view.MotionEvent;
 
@@ -65,8 +64,8 @@ public class CropCircleImageView extends AppCompatImageView {
     //裁剪框线格颜色
     private int clipBorderGridColor = 0xFFFFFFFF;
     /*控件属性*/
-    private int viewWidth = 1;
-    private int viewHeight = 1;
+    private float viewWidth;
+    private float viewHeight;
     /*第一点按下的位置*/
     private float oneDownX;
     private float oneDownY;
@@ -75,6 +74,16 @@ public class CropCircleImageView extends AppCompatImageView {
     private float rectRight;
     private float rectTop;
     private float rectBottom;
+    /*图片缩放属性*/
+    private float bitmapScaleRectLeft;
+    private float bitmapScaleRectRight;
+    private float bitmapScaleRectTop;
+    private float bitmapScaleRectBottom;
+    /*图片初始位置属性*/
+    private float bitmapRectLeft;
+    private float bitmapRectRight;
+    private float bitmapRectTop;
+    private float bitmapRectBottom;
     /*第一点滑动的距离*/
     private float oneMoveY;
     private float oneMoveX;
@@ -93,15 +102,27 @@ public class CropCircleImageView extends AppCompatImageView {
     private int NOWSTATE = ACTIONUP;
     //宽高比
     private float ratio;
-    //比率模式
+    //裁剪区域比率模式
     private int ratioType;
     private final int RATIO_WIDTH = 0x000482;//宽大于高
     private final int RATIO_HEIGHT = 0x000483;//宽小于高
     private final int RATIO_EQUAL = 0x000484;//宽等于高
+    //图片比率模式
+    private int bitmapRatioType;
+    private final int BITMAP_RATIO_WIDTH_BITMAP = 0x000485;//图片宽大于高，图片宽大于控件宽
+    private final int BITMAP_RATIO_WIDTH_VIEW = 0x000487;//图片宽大于高，图片宽小于控件宽
+    private final int BITMAP_RATIO_HEIGHT_BITMAP = 0x000486;//图片宽小于高,图片高大于控件高
+    private final int BITMAP_RATIO_HEIGHT_VIEW = 0x000488;//图片宽小于高,图片高小于控件高
     //四角边距
     private int clipBorderCornerMargin = dp2px(10);
     //是否是缩放 true：缩放 false：移动
     private boolean isScale;
+    /* //裁剪区最小尺寸
+     private float clipMinSize;
+     //裁剪区最大尺寸
+     private float clipMaxSize;*/
+    //裁剪区是否可以缩放
+    private boolean isCanScale = true;
 
     /**
      * 缩放模式
@@ -115,8 +136,15 @@ public class CropCircleImageView extends AppCompatImageView {
     private final int SCALE_TOP = 0x000008;//缩放上边
     private final int SCALE_RIGHT = 0x000006;//缩放右边
     private final int SCALE_BOTTOM = 0x000002;//缩放下边
-    private int bitmapWidth;//图片宽度
-    private int bitmapHeight;//图片高度
+    private float bitmapWidth;//图片宽度
+    private float bitmapHeight;//图片高度
+
+    /**
+     * 图片缩放
+     */
+    private float bitmapMinScaleRatio;//图片最小缩放比例
+    private float bitmapMaxScaleRatio;//图片最大缩放比例
+    private float bitmapScaleRatio;//图片缩放比例
 
 
     public CropCircleImageView(Context context) {
@@ -193,17 +221,81 @@ public class CropCircleImageView extends AppCompatImageView {
     @Override
     protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
         super.onMeasure(widthMeasureSpec, heightMeasureSpec);
-        /**
-         * 获取图片信息
-         */
-        Bitmap bitmap = getBitmap(getDrawable());
-        bitmapWidth = bitmap.getWidth();
-        bitmapHeight = bitmap.getHeight();
+
         //获取初始宽度
         viewWidth = MeasureSpec.getSize(widthMeasureSpec);
         //获取初始高度
         viewHeight = MeasureSpec.getSize(heightMeasureSpec);
+    }
 
+
+    @Override
+    protected void onDraw(Canvas canvas) {
+        Bitmap bitmap = getBitmap(getDrawable());
+        if (bitmap != null) {
+            initDrawBitmap(bitmap);
+            initClip();
+
+           /* if (rectRight - rectLeft >) {
+
+            }*/
+            drawBitmap(canvas, bitmap);
+            /*裁剪区域矩形*/
+            RectF rectF = new RectF(rectLeft, rectTop, rectRight, rectBottom);
+            drawBackground(canvas);
+            drawClipArea(canvas, rectF);
+            drawBorder(canvas, rectF);
+            drawNook(canvas, rectF);
+            if (NOWSTATE != ACTIONUP) {
+                drawGridding(canvas, rectF);
+            }
+        } else {
+            super.onDraw(canvas);
+        }
+    }
+
+    /**
+     * 初始化图片
+     */
+    private void initDrawBitmap(Bitmap bitmap) {
+        /**
+         * 获取图片信息
+         */
+        bitmapWidth = bitmap.getWidth();
+        bitmapHeight = bitmap.getHeight();
+        if (bitmapWidth - bitmapHeight > 0) {
+            //图片宽大于高
+            if (viewWidth - bitmapWidth > 0) {
+                //图片小于控件宽度
+                bitmapRatioType = BITMAP_RATIO_WIDTH_VIEW;
+                bitmapScaleRatio = viewWidth / bitmapWidth;
+                bitmapRectLeft = bitmapScaleRectLeft = 0;
+                bitmapRectTop = bitmapScaleRectTop = (viewHeight - bitmapHeight * bitmapScaleRatio) / 2;
+                bitmapRectRight = bitmapScaleRectRight = viewWidth;
+                bitmapRectBottom = bitmapScaleRectBottom = viewHeight - bitmapScaleRectTop;
+            } else {
+                //图片大于控件宽度
+                bitmapRatioType = BITMAP_RATIO_WIDTH_BITMAP;
+                bitmapScaleRatio = bitmapWidth / viewWidth;
+            }
+        } else {
+            //图片宽小于等于高
+            if (viewHeight - bitmapHeight > 0) {
+                //图片小于控件高度
+                bitmapRatioType = BITMAP_RATIO_HEIGHT_VIEW;
+                bitmapScaleRatio = viewHeight / bitmapHeight;
+            } else {
+                //图片大于控件高度
+                bitmapRatioType = BITMAP_RATIO_HEIGHT_BITMAP;
+                bitmapScaleRatio = bitmapHeight / viewHeight;
+            }
+        }
+    }
+
+    /**
+     * 初始化裁剪区
+     */
+    private void initClip() {
         //初始化裁剪区位置
         if (isConstant) {
             //固定比例
@@ -238,37 +330,28 @@ public class CropCircleImageView extends AppCompatImageView {
         }
     }
 
-
-    @Override
-    protected void onDraw(Canvas canvas) {
-       super.onDraw(canvas);
-
-
-
-
-       /*  Bitmap bitmap = getBitmap(getDrawable());
-       if (bitmap != null) {
-
-        } else {
-            super.onDraw(canvas);
-        }*/
-        /*裁剪区域矩形*/
-        RectF rectF = new RectF(rectLeft, rectTop, rectRight, rectBottom);
-        drawBackground(canvas);
-        drawClipArea(canvas, rectF);
-        drawBorder(canvas, rectF);
-        drawNook(canvas, rectF);
-        if (NOWSTATE != ACTIONUP) {
-            drawGridding(canvas, rectF);
-        }
-    }
-
-    private void test(Canvas canvas, RectF rectF) {
+    /**
+     * 绘制图片
+     *
+     * @param canvas
+     * @param bitmap
+     */
+    private void drawBitmap(Canvas canvas, Bitmap bitmap) {
         Paint paint = new Paint();
         paint.setAntiAlias(true);
-        paint.setColor(Color.WHITE);
-        canvas.drawRect(rectF, paint);
+        Matrix matrix = new Matrix();
+        switch (bitmapRatioType) {
+            case BITMAP_RATIO_WIDTH_VIEW:
+                //matrix.setScale(bitmapScaleRatio,bitmapScaleRatio);
+                Rect bitmapRect = getDrawable().getBounds();
+                RectF bitmapRectF = new RectF(bitmapRect);
+                RectF bitmapScaleRectF = new RectF(bitmapScaleRectLeft, bitmapScaleRectTop, bitmapScaleRectRight, bitmapScaleRectBottom);
+                matrix.setRectToRect(bitmapRectF, bitmapScaleRectF, Matrix.ScaleToFit.CENTER);
+                break;
+        }
+        canvas.drawBitmap(bitmap, matrix, paint);
     }
+
 
     /**
      * 根据手指动作调整裁剪区
@@ -282,199 +365,207 @@ public class CropCircleImageView extends AppCompatImageView {
             rectRight += oneMoveX;
         } else {
             //缩放
-            switch (scaleType) {
-                case SCALE_LEFTBOTTOM://缩放左下角
-                    if (isConstant) {
-                        //固定比例
-                        switch (ratioType) {
-                            case RATIO_EQUAL://宽高相等
-                                rectLeft += oneMoveX;
-                                rectBottom -= oneMoveX;
-                                break;
-                            case RATIO_HEIGHT:
-                                rectLeft += oneMoveX;
-                                rectBottom -= oneMoveX * ratio;
-                                break;
-                            case RATIO_WIDTH:
-                                rectLeft += oneMoveX * ratio;
-                                rectBottom -= oneMoveX;
-                                break;
+           /* if (rectRight - rectLeft > clipMinSize || rectBottom - rectTop > clipMinSize) {
+                isCanScale = true;
+            } else {
+                isCanScale = false;
+            }*/
+
+            if (isCanScale) {
+                switch (scaleType) {
+                    case SCALE_LEFTBOTTOM://缩放左下角
+                        if (isConstant) {
+                            //固定比例
+                            switch (ratioType) {
+                                case RATIO_EQUAL://宽高相等
+                                    rectLeft += oneMoveX;
+                                    rectBottom -= oneMoveX;
+                                    break;
+                                case RATIO_HEIGHT:
+                                    rectLeft += oneMoveX;
+                                    rectBottom -= oneMoveX * ratio;
+                                    break;
+                                case RATIO_WIDTH:
+                                    rectLeft += oneMoveX * ratio;
+                                    rectBottom -= oneMoveX;
+                                    break;
+                            }
+                        } else {
+                            //不固定比例
+                            rectLeft += oneMoveX;
+                            rectBottom += oneMoveY;
                         }
-                    } else {
-                        //不固定比例
-                        rectLeft += oneMoveX;
-                        rectBottom += oneMoveY;
-                    }
-                    break;
-                case SCALE_LEFTTOP://缩放左上角
-                    if (isConstant) {
-                        //固定比例
-                        switch (ratioType) {
-                            case RATIO_EQUAL://宽高相等
-                                rectLeft += oneMoveX;
-                                rectTop += oneMoveX;
-                                break;
-                            case RATIO_HEIGHT:
-                                rectLeft += oneMoveX;
-                                rectTop += oneMoveX * ratio;
-                                break;
-                            case RATIO_WIDTH:
-                                rectLeft += oneMoveX * ratio;
-                                rectTop += oneMoveX;
-                                break;
+                        break;
+                    case SCALE_LEFTTOP://缩放左上角
+                        if (isConstant) {
+                            //固定比例
+                            switch (ratioType) {
+                                case RATIO_EQUAL://宽高相等
+                                    rectLeft += oneMoveX;
+                                    rectTop += oneMoveX;
+                                    break;
+                                case RATIO_HEIGHT:
+                                    rectLeft += oneMoveX;
+                                    rectTop += oneMoveX * ratio;
+                                    break;
+                                case RATIO_WIDTH:
+                                    rectLeft += oneMoveX * ratio;
+                                    rectTop += oneMoveX;
+                                    break;
+                            }
+                        } else {
+                            //不固定比例
+                            rectLeft += oneMoveX;
+                            rectTop += oneMoveY;
                         }
-                    } else {
-                        //不固定比例
-                        rectLeft += oneMoveX;
-                        rectTop += oneMoveY;
-                    }
-                    break;
-                case SCALE_RIGHTTOP://缩放右上角
-                    if (isConstant) {
-                        //固定比例
-                        switch (ratioType) {
-                            case RATIO_EQUAL://宽高相等
-                                rectRight += oneMoveX;
-                                rectTop -= oneMoveX;
-                                break;
-                            case RATIO_HEIGHT:
-                                rectRight += oneMoveX;
-                                rectTop -= oneMoveX * ratio;
-                                break;
-                            case RATIO_WIDTH:
-                                rectRight += oneMoveX * ratio;
-                                rectTop -= oneMoveX;
-                                break;
+                        break;
+                    case SCALE_RIGHTTOP://缩放右上角
+                        if (isConstant) {
+                            //固定比例
+                            switch (ratioType) {
+                                case RATIO_EQUAL://宽高相等
+                                    rectRight += oneMoveX;
+                                    rectTop -= oneMoveX;
+                                    break;
+                                case RATIO_HEIGHT:
+                                    rectRight += oneMoveX;
+                                    rectTop -= oneMoveX * ratio;
+                                    break;
+                                case RATIO_WIDTH:
+                                    rectRight += oneMoveX * ratio;
+                                    rectTop -= oneMoveX;
+                                    break;
+                            }
+                        } else {
+                            //不固定比例
+                            rectRight += oneMoveX;
+                            rectTop += oneMoveY;
                         }
-                    } else {
-                        //不固定比例
-                        rectRight += oneMoveX;
-                        rectTop += oneMoveY;
-                    }
-                    break;
-                case SCALE_RIGHTBOTTOM://缩放右下角
-                    if (isConstant) {
-                        //固定比例
-                        switch (ratioType) {
-                            case RATIO_EQUAL://宽高相等
-                                rectRight += oneMoveX;
-                                rectBottom += oneMoveX;
-                                break;
-                            case RATIO_HEIGHT:
-                                rectRight += oneMoveX;
-                                rectBottom += oneMoveX * ratio;
-                                break;
-                            case RATIO_WIDTH:
-                                rectRight += oneMoveX * ratio;
-                                rectBottom += oneMoveX;
-                                break;
+                        break;
+                    case SCALE_RIGHTBOTTOM://缩放右下角
+                        if (isConstant) {
+                            //固定比例
+                            switch (ratioType) {
+                                case RATIO_EQUAL://宽高相等
+                                    rectRight += oneMoveX;
+                                    rectBottom += oneMoveX;
+                                    break;
+                                case RATIO_HEIGHT:
+                                    rectRight += oneMoveX;
+                                    rectBottom += oneMoveX * ratio;
+                                    break;
+                                case RATIO_WIDTH:
+                                    rectRight += oneMoveX * ratio;
+                                    rectBottom += oneMoveX;
+                                    break;
+                            }
+                        } else {
+                            //不固定比例
+                            rectRight += oneMoveX;
+                            rectBottom += oneMoveY;
                         }
-                    } else {
-                        //不固定比例
-                        rectRight += oneMoveX;
-                        rectBottom += oneMoveY;
-                    }
-                    break;
-                case SCALE_LEFT://缩放左边
-                    if (isConstant) {
-                        //固定比例
-                        switch (ratioType) {
-                            case RATIO_EQUAL://宽高相等
-                                rectLeft += oneMoveX;
-                                rectTop += oneMoveX / 2;
-                                rectBottom -= oneMoveX / 2;
-                                break;
-                            case RATIO_HEIGHT:
-                                rectLeft += oneMoveX;
-                                rectTop += (oneMoveX * ratio) / 2;
-                                rectBottom -= (oneMoveX * ratio) / 2;
-                                break;
-                            case RATIO_WIDTH:
-                                rectLeft += oneMoveX * ratio;
-                                rectTop += oneMoveX / 2;
-                                rectBottom -= oneMoveX / 2;
-                                break;
+                        break;
+                    case SCALE_LEFT://缩放左边
+                        if (isConstant) {
+                            //固定比例
+                            switch (ratioType) {
+                                case RATIO_EQUAL://宽高相等
+                                    rectLeft += oneMoveX;
+                                    rectTop += oneMoveX / 2;
+                                    rectBottom -= oneMoveX / 2;
+                                    break;
+                                case RATIO_HEIGHT:
+                                    rectLeft += oneMoveX;
+                                    rectTop += (oneMoveX * ratio) / 2;
+                                    rectBottom -= (oneMoveX * ratio) / 2;
+                                    break;
+                                case RATIO_WIDTH:
+                                    rectLeft += oneMoveX * ratio;
+                                    rectTop += oneMoveX / 2;
+                                    rectBottom -= oneMoveX / 2;
+                                    break;
+                            }
+                        } else {
+                            //不固定比例
+                            rectLeft += oneMoveX;
                         }
-                    } else {
-                        //不固定比例
-                        rectLeft += oneMoveX;
-                    }
-                    break;
-                case SCALE_TOP://缩放上边
-                    if (isConstant) {
-                        //固定比例
-                        switch (ratioType) {
-                            case RATIO_EQUAL://宽高相等
-                                rectRight -= oneMoveY / 2;
-                                rectTop += oneMoveY;
-                                rectLeft += oneMoveY / 2;
-                                break;
-                            case RATIO_HEIGHT:
-                                rectRight -= oneMoveY / 2;
-                                rectTop += oneMoveY * ratio;
-                                rectLeft += oneMoveY / 2;
-                                break;
-                            case RATIO_WIDTH:
-                                rectRight -= (oneMoveY * ratio) / 2;
-                                rectTop += oneMoveY;
-                                rectLeft += (oneMoveY * ratio) / 2;
-                                break;
+                        break;
+                    case SCALE_TOP://缩放上边
+                        if (isConstant) {
+                            //固定比例
+                            switch (ratioType) {
+                                case RATIO_EQUAL://宽高相等
+                                    rectRight -= oneMoveY / 2;
+                                    rectTop += oneMoveY;
+                                    rectLeft += oneMoveY / 2;
+                                    break;
+                                case RATIO_HEIGHT:
+                                    rectRight -= oneMoveY / 2;
+                                    rectTop += oneMoveY * ratio;
+                                    rectLeft += oneMoveY / 2;
+                                    break;
+                                case RATIO_WIDTH:
+                                    rectRight -= (oneMoveY * ratio) / 2;
+                                    rectTop += oneMoveY;
+                                    rectLeft += (oneMoveY * ratio) / 2;
+                                    break;
+                            }
+                        } else {
+                            //不固定比例
+                            rectTop += oneMoveY;
                         }
-                    } else {
-                        //不固定比例
-                        rectTop += oneMoveY;
-                    }
-                    break;
-                case SCALE_RIGHT://缩放右边
-                    if (isConstant) {
-                        //固定比例
-                        switch (ratioType) {
-                            case RATIO_EQUAL://宽高相等
-                                rectRight += oneMoveX;
-                                rectBottom += oneMoveX / 2;
-                                rectTop -= oneMoveX / 2;
-                                break;
-                            case RATIO_HEIGHT:
-                                rectRight += oneMoveX;
-                                rectBottom += (oneMoveX * ratio) / 2;
-                                rectTop -= (oneMoveX * ratio) / 2;
-                                break;
-                            case RATIO_WIDTH:
-                                rectRight += oneMoveX * ratio;
-                                rectBottom += oneMoveX / 2;
-                                rectTop -= oneMoveX / 2;
-                                break;
+                        break;
+                    case SCALE_RIGHT://缩放右边
+                        if (isConstant) {
+                            //固定比例
+                            switch (ratioType) {
+                                case RATIO_EQUAL://宽高相等
+                                    rectRight += oneMoveX;
+                                    rectBottom += oneMoveX / 2;
+                                    rectTop -= oneMoveX / 2;
+                                    break;
+                                case RATIO_HEIGHT:
+                                    rectRight += oneMoveX;
+                                    rectBottom += (oneMoveX * ratio) / 2;
+                                    rectTop -= (oneMoveX * ratio) / 2;
+                                    break;
+                                case RATIO_WIDTH:
+                                    rectRight += oneMoveX * ratio;
+                                    rectBottom += oneMoveX / 2;
+                                    rectTop -= oneMoveX / 2;
+                                    break;
+                            }
+                        } else {
+                            //不固定比例
+                            rectRight += oneMoveX;
                         }
-                    } else {
-                        //不固定比例
-                        rectRight += oneMoveX;
-                    }
-                    break;
-                case SCALE_BOTTOM://缩放下边
-                    if (isConstant) {
-                        //固定比例
-                        switch (ratioType) {
-                            case RATIO_EQUAL://宽高相等
-                                rectRight += oneMoveY / 2;
-                                rectBottom += oneMoveY;
-                                rectLeft -= oneMoveY / 2;
-                                break;
-                            case RATIO_HEIGHT:
-                                rectRight += oneMoveY / 2;
-                                rectBottom += oneMoveY * ratio;
-                                rectLeft -= oneMoveY / 2;
-                                break;
-                            case RATIO_WIDTH:
-                                rectRight += (oneMoveY * ratio) / 2;
-                                rectBottom += oneMoveY;
-                                rectLeft -= (oneMoveY * ratio) / 2;
-                                break;
+                        break;
+                    case SCALE_BOTTOM://缩放下边
+                        if (isConstant) {
+                            //固定比例
+                            switch (ratioType) {
+                                case RATIO_EQUAL://宽高相等
+                                    rectRight += oneMoveY / 2;
+                                    rectBottom += oneMoveY;
+                                    rectLeft -= oneMoveY / 2;
+                                    break;
+                                case RATIO_HEIGHT:
+                                    rectRight += oneMoveY / 2;
+                                    rectBottom += oneMoveY * ratio;
+                                    rectLeft -= oneMoveY / 2;
+                                    break;
+                                case RATIO_WIDTH:
+                                    rectRight += (oneMoveY * ratio) / 2;
+                                    rectBottom += oneMoveY;
+                                    rectLeft -= (oneMoveY * ratio) / 2;
+                                    break;
+                            }
+                        } else {
+                            //不固定比例
+                            rectBottom += oneMoveY;
                         }
-                    } else {
-                        //不固定比例
-                        rectBottom += oneMoveY;
-                    }
-                    break;
+                        break;
+                }
             }
         }
     }
@@ -545,7 +636,7 @@ public class CropCircleImageView extends AppCompatImageView {
     }
 
     /**
-     * 绘制椭圆裁剪区域
+     * 绘制裁剪区域
      *
      * @param canvas
      */
@@ -564,7 +655,6 @@ public class CropCircleImageView extends AppCompatImageView {
                 canvas.drawRect(rectF, paint);
                 break;
         }
-
     }
 
     /**
