@@ -118,7 +118,7 @@ public class CropCircleImageView extends AppCompatImageView {
      //裁剪区最大尺寸
      private float clipMaxSize;*/
     //裁剪区是否可以缩放
-    private boolean isCanScale = true;
+    //private boolean isCanScale = true;
 
     /**
      * 缩放模式
@@ -221,6 +221,9 @@ public class CropCircleImageView extends AppCompatImageView {
         viewWidth = MeasureSpec.getSize(widthMeasureSpec);
         //获取初始高度
         viewHeight = MeasureSpec.getSize(heightMeasureSpec);
+        //获取图片信息
+         //初始化裁剪区域
+        initClip();
     }
 
 
@@ -238,8 +241,10 @@ public class CropCircleImageView extends AppCompatImageView {
         bitmapRectTop = rect.top;
         bitmapRectRight = rect.right;
         bitmapRectBottom = rect.bottom;
+        Log.e("we", drawable.getIntrinsicWidth()+" "+drawable.getIntrinsicHeight());
+        Log.e("dfsd",bitmapRectLeft+" "+bitmapRectTop+" "+bitmapRectRight+" "+bitmapRectBottom);
+
         /*裁剪区域矩形*/
-        initClip();
         RectF rectF = new RectF(rectLeft, rectTop, rectRight, rectBottom);
         drawBackground(canvas);
         drawClipArea(canvas, rectF);
@@ -249,6 +254,7 @@ public class CropCircleImageView extends AppCompatImageView {
             drawGridding(canvas, rectF);
         }
     }
+
     /**
      * 初始化裁剪区
      */
@@ -300,207 +306,199 @@ public class CropCircleImageView extends AppCompatImageView {
             rectRight += oneMoveX;
         } else {
             //缩放
-           /* if (rectRight - rectLeft > clipMinSize || rectBottom - rectTop > clipMinSize) {
-                isCanScale = true;
-            } else {
-                isCanScale = false;
-            }*/
-
-            if (isCanScale) {
-                switch (scaleType) {
-                    case SCALE_LEFTBOTTOM://缩放左下角
-                        if (isConstant) {
-                            //固定比例
-                            switch (ratioType) {
-                                case RATIO_EQUAL://宽高相等
-                                    rectLeft += oneMoveX;
-                                    rectBottom -= oneMoveX;
-                                    break;
-                                case RATIO_HEIGHT:
-                                    rectLeft += oneMoveX;
-                                    rectBottom -= oneMoveX * ratio;
-                                    break;
-                                case RATIO_WIDTH:
-                                    rectLeft += oneMoveX * ratio;
-                                    rectBottom -= oneMoveX;
-                                    break;
-                            }
-                        } else {
-                            //不固定比例
-                            rectLeft += oneMoveX;
-                            rectBottom += oneMoveY;
+            switch (scaleType) {
+                case SCALE_LEFTBOTTOM://缩放左下角
+                    if (isConstant) {
+                        //固定比例
+                        switch (ratioType) {
+                            case RATIO_EQUAL://宽高相等
+                                rectLeft += oneMoveX;
+                                rectBottom -= oneMoveX;
+                                break;
+                            case RATIO_HEIGHT:
+                                rectLeft += oneMoveX;
+                                rectBottom -= oneMoveX * ratio;
+                                break;
+                            case RATIO_WIDTH:
+                                rectLeft += oneMoveX * ratio;
+                                rectBottom -= oneMoveX;
+                                break;
                         }
-                        break;
-                    case SCALE_LEFTTOP://缩放左上角
-                        if (isConstant) {
-                            //固定比例
-                            switch (ratioType) {
-                                case RATIO_EQUAL://宽高相等
-                                    rectLeft += oneMoveX;
-                                    rectTop += oneMoveX;
-                                    break;
-                                case RATIO_HEIGHT:
-                                    rectLeft += oneMoveX;
-                                    rectTop += oneMoveX * ratio;
-                                    break;
-                                case RATIO_WIDTH:
-                                    rectLeft += oneMoveX * ratio;
-                                    rectTop += oneMoveX;
-                                    break;
-                            }
-                        } else {
-                            //不固定比例
-                            rectLeft += oneMoveX;
-                            rectTop += oneMoveY;
+                    } else {
+                        //不固定比例
+                        rectLeft += oneMoveX;
+                        rectBottom += oneMoveY;
+                    }
+                    break;
+                case SCALE_LEFTTOP://缩放左上角
+                    if (isConstant) {
+                        //固定比例
+                        switch (ratioType) {
+                            case RATIO_EQUAL://宽高相等
+                                rectLeft += oneMoveX;
+                                rectTop += oneMoveX;
+                                break;
+                            case RATIO_HEIGHT:
+                                rectLeft += oneMoveX;
+                                rectTop += oneMoveX * ratio;
+                                break;
+                            case RATIO_WIDTH:
+                                rectLeft += oneMoveX * ratio;
+                                rectTop += oneMoveX;
+                                break;
                         }
-                        break;
-                    case SCALE_RIGHTTOP://缩放右上角
-                        if (isConstant) {
-                            //固定比例
-                            switch (ratioType) {
-                                case RATIO_EQUAL://宽高相等
-                                    rectRight += oneMoveX;
-                                    rectTop -= oneMoveX;
-                                    break;
-                                case RATIO_HEIGHT:
-                                    rectRight += oneMoveX;
-                                    rectTop -= oneMoveX * ratio;
-                                    break;
-                                case RATIO_WIDTH:
-                                    rectRight += oneMoveX * ratio;
-                                    rectTop -= oneMoveX;
-                                    break;
-                            }
-                        } else {
-                            //不固定比例
-                            rectRight += oneMoveX;
-                            rectTop += oneMoveY;
+                    } else {
+                        //不固定比例
+                        rectLeft += oneMoveX;
+                        rectTop += oneMoveY;
+                    }
+                    break;
+                case SCALE_RIGHTTOP://缩放右上角
+                    if (isConstant) {
+                        //固定比例
+                        switch (ratioType) {
+                            case RATIO_EQUAL://宽高相等
+                                rectRight += oneMoveX;
+                                rectTop -= oneMoveX;
+                                break;
+                            case RATIO_HEIGHT:
+                                rectRight += oneMoveX;
+                                rectTop -= oneMoveX * ratio;
+                                break;
+                            case RATIO_WIDTH:
+                                rectRight += oneMoveX * ratio;
+                                rectTop -= oneMoveX;
+                                break;
                         }
-                        break;
-                    case SCALE_RIGHTBOTTOM://缩放右下角
-                        if (isConstant) {
-                            //固定比例
-                            switch (ratioType) {
-                                case RATIO_EQUAL://宽高相等
-                                    rectRight += oneMoveX;
-                                    rectBottom += oneMoveX;
-                                    break;
-                                case RATIO_HEIGHT:
-                                    rectRight += oneMoveX;
-                                    rectBottom += oneMoveX * ratio;
-                                    break;
-                                case RATIO_WIDTH:
-                                    rectRight += oneMoveX * ratio;
-                                    rectBottom += oneMoveX;
-                                    break;
-                            }
-                        } else {
-                            //不固定比例
-                            rectRight += oneMoveX;
-                            rectBottom += oneMoveY;
+                    } else {
+                        //不固定比例
+                        rectRight += oneMoveX;
+                        rectTop += oneMoveY;
+                    }
+                    break;
+                case SCALE_RIGHTBOTTOM://缩放右下角
+                    if (isConstant) {
+                        //固定比例
+                        switch (ratioType) {
+                            case RATIO_EQUAL://宽高相等
+                                rectRight += oneMoveX;
+                                rectBottom += oneMoveX;
+                                break;
+                            case RATIO_HEIGHT:
+                                rectRight += oneMoveX;
+                                rectBottom += oneMoveX * ratio;
+                                break;
+                            case RATIO_WIDTH:
+                                rectRight += oneMoveX * ratio;
+                                rectBottom += oneMoveX;
+                                break;
                         }
-                        break;
-                    case SCALE_LEFT://缩放左边
-                        if (isConstant) {
-                            //固定比例
-                            switch (ratioType) {
-                                case RATIO_EQUAL://宽高相等
-                                    rectLeft += oneMoveX;
-                                    rectTop += oneMoveX / 2;
-                                    rectBottom -= oneMoveX / 2;
-                                    break;
-                                case RATIO_HEIGHT:
-                                    rectLeft += oneMoveX;
-                                    rectTop += (oneMoveX * ratio) / 2;
-                                    rectBottom -= (oneMoveX * ratio) / 2;
-                                    break;
-                                case RATIO_WIDTH:
-                                    rectLeft += oneMoveX * ratio;
-                                    rectTop += oneMoveX / 2;
-                                    rectBottom -= oneMoveX / 2;
-                                    break;
-                            }
-                        } else {
-                            //不固定比例
-                            rectLeft += oneMoveX;
+                    } else {
+                        //不固定比例
+                        rectRight += oneMoveX;
+                        rectBottom += oneMoveY;
+                    }
+                    break;
+                case SCALE_LEFT://缩放左边
+                    if (isConstant) {
+                        //固定比例
+                        switch (ratioType) {
+                            case RATIO_EQUAL://宽高相等
+                                rectLeft += oneMoveX;
+                                rectTop += oneMoveX / 2;
+                                rectBottom -= oneMoveX / 2;
+                                break;
+                            case RATIO_HEIGHT:
+                                rectLeft += oneMoveX;
+                                rectTop += (oneMoveX * ratio) / 2;
+                                rectBottom -= (oneMoveX * ratio) / 2;
+                                break;
+                            case RATIO_WIDTH:
+                                rectLeft += oneMoveX * ratio;
+                                rectTop += oneMoveX / 2;
+                                rectBottom -= oneMoveX / 2;
+                                break;
                         }
-                        break;
-                    case SCALE_TOP://缩放上边
-                        if (isConstant) {
-                            //固定比例
-                            switch (ratioType) {
-                                case RATIO_EQUAL://宽高相等
-                                    rectRight -= oneMoveY / 2;
-                                    rectTop += oneMoveY;
-                                    rectLeft += oneMoveY / 2;
-                                    break;
-                                case RATIO_HEIGHT:
-                                    rectRight -= oneMoveY / 2;
-                                    rectTop += oneMoveY * ratio;
-                                    rectLeft += oneMoveY / 2;
-                                    break;
-                                case RATIO_WIDTH:
-                                    rectRight -= (oneMoveY * ratio) / 2;
-                                    rectTop += oneMoveY;
-                                    rectLeft += (oneMoveY * ratio) / 2;
-                                    break;
-                            }
-                        } else {
-                            //不固定比例
-                            rectTop += oneMoveY;
+                    } else {
+                        //不固定比例
+                        rectLeft += oneMoveX;
+                    }
+                    break;
+                case SCALE_TOP://缩放上边
+                    if (isConstant) {
+                        //固定比例
+                        switch (ratioType) {
+                            case RATIO_EQUAL://宽高相等
+                                rectRight -= oneMoveY / 2;
+                                rectTop += oneMoveY;
+                                rectLeft += oneMoveY / 2;
+                                break;
+                            case RATIO_HEIGHT:
+                                rectRight -= oneMoveY / 2;
+                                rectTop += oneMoveY * ratio;
+                                rectLeft += oneMoveY / 2;
+                                break;
+                            case RATIO_WIDTH:
+                                rectRight -= (oneMoveY * ratio) / 2;
+                                rectTop += oneMoveY;
+                                rectLeft += (oneMoveY * ratio) / 2;
+                                break;
                         }
-                        break;
-                    case SCALE_RIGHT://缩放右边
-                        if (isConstant) {
-                            //固定比例
-                            switch (ratioType) {
-                                case RATIO_EQUAL://宽高相等
-                                    rectRight += oneMoveX;
-                                    rectBottom += oneMoveX / 2;
-                                    rectTop -= oneMoveX / 2;
-                                    break;
-                                case RATIO_HEIGHT:
-                                    rectRight += oneMoveX;
-                                    rectBottom += (oneMoveX * ratio) / 2;
-                                    rectTop -= (oneMoveX * ratio) / 2;
-                                    break;
-                                case RATIO_WIDTH:
-                                    rectRight += oneMoveX * ratio;
-                                    rectBottom += oneMoveX / 2;
-                                    rectTop -= oneMoveX / 2;
-                                    break;
-                            }
-                        } else {
-                            //不固定比例
-                            rectRight += oneMoveX;
+                    } else {
+                        //不固定比例
+                        rectTop += oneMoveY;
+                    }
+                    break;
+                case SCALE_RIGHT://缩放右边
+                    if (isConstant) {
+                        //固定比例
+                        switch (ratioType) {
+                            case RATIO_EQUAL://宽高相等
+                                rectRight += oneMoveX;
+                                rectBottom += oneMoveX / 2;
+                                rectTop -= oneMoveX / 2;
+                                break;
+                            case RATIO_HEIGHT:
+                                rectRight += oneMoveX;
+                                rectBottom += (oneMoveX * ratio) / 2;
+                                rectTop -= (oneMoveX * ratio) / 2;
+                                break;
+                            case RATIO_WIDTH:
+                                rectRight += oneMoveX * ratio;
+                                rectBottom += oneMoveX / 2;
+                                rectTop -= oneMoveX / 2;
+                                break;
                         }
-                        break;
-                    case SCALE_BOTTOM://缩放下边
-                        if (isConstant) {
-                            //固定比例
-                            switch (ratioType) {
-                                case RATIO_EQUAL://宽高相等
-                                    rectRight += oneMoveY / 2;
-                                    rectBottom += oneMoveY;
-                                    rectLeft -= oneMoveY / 2;
-                                    break;
-                                case RATIO_HEIGHT:
-                                    rectRight += oneMoveY / 2;
-                                    rectBottom += oneMoveY * ratio;
-                                    rectLeft -= oneMoveY / 2;
-                                    break;
-                                case RATIO_WIDTH:
-                                    rectRight += (oneMoveY * ratio) / 2;
-                                    rectBottom += oneMoveY;
-                                    rectLeft -= (oneMoveY * ratio) / 2;
-                                    break;
-                            }
-                        } else {
-                            //不固定比例
-                            rectBottom += oneMoveY;
+                    } else {
+                        //不固定比例
+                        rectRight += oneMoveX;
+                    }
+                    break;
+                case SCALE_BOTTOM://缩放下边
+                    if (isConstant) {
+                        //固定比例
+                        switch (ratioType) {
+                            case RATIO_EQUAL://宽高相等
+                                rectRight += oneMoveY / 2;
+                                rectBottom += oneMoveY;
+                                rectLeft -= oneMoveY / 2;
+                                break;
+                            case RATIO_HEIGHT:
+                                rectRight += oneMoveY / 2;
+                                rectBottom += oneMoveY * ratio;
+                                rectLeft -= oneMoveY / 2;
+                                break;
+                            case RATIO_WIDTH:
+                                rectRight += (oneMoveY * ratio) / 2;
+                                rectBottom += oneMoveY;
+                                rectLeft -= (oneMoveY * ratio) / 2;
+                                break;
                         }
-                        break;
-                }
+                    } else {
+                        //不固定比例
+                        rectBottom += oneMoveY;
+                    }
+                    break;
             }
         }
     }
