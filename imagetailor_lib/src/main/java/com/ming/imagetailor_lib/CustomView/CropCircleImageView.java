@@ -18,6 +18,7 @@ import android.graphics.drawable.Drawable;
 import android.os.Build;
 import android.support.v7.widget.AppCompatImageView;
 import android.util.AttributeSet;
+import android.util.Log;
 import android.util.TypedValue;
 import android.view.MotionEvent;
 
@@ -107,12 +108,7 @@ public class CropCircleImageView extends AppCompatImageView {
     private final int RATIO_WIDTH = 0x000482;//宽大于高
     private final int RATIO_HEIGHT = 0x000483;//宽小于高
     private final int RATIO_EQUAL = 0x000484;//宽等于高
-    //图片比率模式
-    private int bitmapRatioType;
-    private final int BITMAP_RATIO_WIDTH_BITMAP = 0x000485;//图片宽大于高，图片宽大于控件宽
-    private final int BITMAP_RATIO_WIDTH_VIEW = 0x000487;//图片宽大于高，图片宽小于控件宽
-    private final int BITMAP_RATIO_HEIGHT_BITMAP = 0x000486;//图片宽小于高,图片高大于控件高
-    private final int BITMAP_RATIO_HEIGHT_VIEW = 0x000488;//图片宽小于高,图片高小于控件高
+
     //四角边距
     private int clipBorderCornerMargin = dp2px(10);
     //是否是缩放 true：缩放 false：移动
@@ -221,7 +217,6 @@ public class CropCircleImageView extends AppCompatImageView {
     @Override
     protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
         super.onMeasure(widthMeasureSpec, heightMeasureSpec);
-
         //获取初始宽度
         viewWidth = MeasureSpec.getSize(widthMeasureSpec);
         //获取初始高度
@@ -231,67 +226,29 @@ public class CropCircleImageView extends AppCompatImageView {
 
     @Override
     protected void onDraw(Canvas canvas) {
-        Bitmap bitmap = getBitmap(getDrawable());
-        if (bitmap != null) {
-            initDrawBitmap(bitmap);
-            initClip();
-
-           /* if (rectRight - rectLeft >) {
-
-            }*/
-            drawBitmap(canvas, bitmap);
-            /*裁剪区域矩形*/
-            RectF rectF = new RectF(rectLeft, rectTop, rectRight, rectBottom);
-            drawBackground(canvas);
-            drawClipArea(canvas, rectF);
-            drawBorder(canvas, rectF);
-            drawNook(canvas, rectF);
-            if (NOWSTATE != ACTIONUP) {
-                drawGridding(canvas, rectF);
-            }
-        } else {
-            super.onDraw(canvas);
+        super.onDraw(canvas);
+        Matrix matrix = getImageMatrix();
+        RectF rect = new RectF();
+        Drawable drawable = getDrawable();
+        if (drawable != null) {
+            rect.set(0, 0, drawable.getIntrinsicWidth(), drawable.getIntrinsicHeight());
+            matrix.mapRect(rect);
+        }
+        bitmapRectLeft = rect.left;
+        bitmapRectTop = rect.top;
+        bitmapRectRight = rect.right;
+        bitmapRectBottom = rect.bottom;
+        /*裁剪区域矩形*/
+        initClip();
+        RectF rectF = new RectF(rectLeft, rectTop, rectRight, rectBottom);
+        drawBackground(canvas);
+        drawClipArea(canvas, rectF);
+        drawBorder(canvas, rectF);
+        drawNook(canvas, rectF);
+        if (NOWSTATE != ACTIONUP) {
+            drawGridding(canvas, rectF);
         }
     }
-
-    /**
-     * 初始化图片
-     */
-    private void initDrawBitmap(Bitmap bitmap) {
-        /**
-         * 获取图片信息
-         */
-        bitmapWidth = bitmap.getWidth();
-        bitmapHeight = bitmap.getHeight();
-        if (bitmapWidth - bitmapHeight > 0) {
-            //图片宽大于高
-            if (viewWidth - bitmapWidth > 0) {
-                //图片小于控件宽度
-                bitmapRatioType = BITMAP_RATIO_WIDTH_VIEW;
-                bitmapScaleRatio = viewWidth / bitmapWidth;
-                bitmapRectLeft = bitmapScaleRectLeft = 0;
-                bitmapRectTop = bitmapScaleRectTop = (viewHeight - bitmapHeight * bitmapScaleRatio) / 2;
-                bitmapRectRight = bitmapScaleRectRight = viewWidth;
-                bitmapRectBottom = bitmapScaleRectBottom = viewHeight - bitmapScaleRectTop;
-            } else {
-                //图片大于控件宽度
-                bitmapRatioType = BITMAP_RATIO_WIDTH_BITMAP;
-                bitmapScaleRatio = bitmapWidth / viewWidth;
-            }
-        } else {
-            //图片宽小于等于高
-            if (viewHeight - bitmapHeight > 0) {
-                //图片小于控件高度
-                bitmapRatioType = BITMAP_RATIO_HEIGHT_VIEW;
-                bitmapScaleRatio = viewHeight / bitmapHeight;
-            } else {
-                //图片大于控件高度
-                bitmapRatioType = BITMAP_RATIO_HEIGHT_BITMAP;
-                bitmapScaleRatio = bitmapHeight / viewHeight;
-            }
-        }
-    }
-
     /**
      * 初始化裁剪区
      */
@@ -328,28 +285,6 @@ public class CropCircleImageView extends AppCompatImageView {
             rectTop = (viewHeight - (rectRight - rectLeft)) / 2;
             rectBottom = viewHeight - rectTop;
         }
-    }
-
-    /**
-     * 绘制图片
-     *
-     * @param canvas
-     * @param bitmap
-     */
-    private void drawBitmap(Canvas canvas, Bitmap bitmap) {
-        Paint paint = new Paint();
-        paint.setAntiAlias(true);
-        Matrix matrix = new Matrix();
-        switch (bitmapRatioType) {
-            case BITMAP_RATIO_WIDTH_VIEW:
-                //matrix.setScale(bitmapScaleRatio,bitmapScaleRatio);
-                Rect bitmapRect = getDrawable().getBounds();
-                RectF bitmapRectF = new RectF(bitmapRect);
-                RectF bitmapScaleRectF = new RectF(bitmapScaleRectLeft, bitmapScaleRectTop, bitmapScaleRectRight, bitmapScaleRectBottom);
-                matrix.setRectToRect(bitmapRectF, bitmapScaleRectF, Matrix.ScaleToFit.CENTER);
-                break;
-        }
-        canvas.drawBitmap(bitmap, matrix, paint);
     }
 
 
