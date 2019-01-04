@@ -27,10 +27,10 @@ public class MainActivity extends AppCompatActivity {
         imageTailor = new ImageTailor(MainActivity.this);
         imageTailor.setCameraFilePath(Environment.getExternalStorageDirectory().toString());
         //设置裁剪类型
-       // imageTailor.setClipType(ImageTailor.TYPEFIXEDOVAL);
+        imageTailor.setClipType(ImageTailor.TYPEFIXEDOVAL);
         //imageTailor.setClipType(ImageTailor.TYPEOVAL);
         //imageTailor.setClipType(ImageTailor.TYPESQUARE);
-        imageTailor.setClipType(ImageTailor.TYPEFIXEDOSQUARE);
+        //imageTailor.setClipType(ImageTailor.TYPEFIXEDOSQUARE);
         //设置裁剪比例
         imageTailor.setWidthHeightScale(3, 3);
         circleImageView.setOnClickListener(new View.OnClickListener() {

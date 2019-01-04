@@ -92,7 +92,7 @@ public class CropCircleImageView extends AppCompatImageView {
     private float oneNowMoveY;
     private float oneNowMoveX;
     //裁剪区域初始边距
-    private int initMargin = dp2px(40);
+    private float initMargin = dp2px(40);
     /**
      * 滑动状态
      */
@@ -103,22 +103,17 @@ public class CropCircleImageView extends AppCompatImageView {
     private int NOWSTATE = ACTIONUP;
     //宽高比
     private float ratio;
-    //裁剪区域比率模式
-    private int ratioType;
-    private final int RATIO_WIDTH = 0x000482;//宽大于高
-    private final int RATIO_HEIGHT = 0x000483;//宽小于高
-    private final int RATIO_EQUAL = 0x000484;//宽等于高
 
     //四角边距
     private int clipBorderCornerMargin = dp2px(10);
     //是否是缩放 true：缩放 false：移动
     private boolean isScale;
-    /* //裁剪区最小尺寸
-     private float clipMinSize;
-     //裁剪区最大尺寸
-     private float clipMaxSize;*/
-    //裁剪区是否可以缩放
-    //private boolean isCanScale = true;
+    //裁剪区最小尺寸
+    private float clipMinSize = (clipBorderCornerMargin + clipBorderLength) * 2 + 2;
+    //裁剪区最大尺寸
+    private float clipMaxSize;
+    //是否是第一次初始化
+    private boolean isInit = true;
 
     /**
      * 缩放模式
@@ -139,8 +134,10 @@ public class CropCircleImageView extends AppCompatImageView {
      * 图片缩放
      */
     private float bitmapMinScaleRatio;//图片最小缩放比例
-    private float bitmapMaxScaleRatio;//图片最大缩放比例
+    private float bitmapMaxScaleRatio = 5f;//图片最大缩放比例
     private float bitmapScaleRatio;//图片缩放比例
+    //裁剪区域矩形
+    private RectF rectF;
 
 
     public CropCircleImageView(Context context) {
@@ -217,19 +214,19 @@ public class CropCircleImageView extends AppCompatImageView {
     @Override
     protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
         super.onMeasure(widthMeasureSpec, heightMeasureSpec);
-        //获取初始宽度
-        viewWidth = MeasureSpec.getSize(widthMeasureSpec);
-        //获取初始高度
-        viewHeight = MeasureSpec.getSize(heightMeasureSpec);
-        //获取图片信息
-         //初始化裁剪区域
-        initClip();
+        if (isInit) {
+            //获取初始宽度
+            viewWidth = MeasureSpec.getSize(widthMeasureSpec);
+            //获取初始高度
+            viewHeight = MeasureSpec.getSize(heightMeasureSpec);
+        }
     }
 
 
     @Override
     protected void onDraw(Canvas canvas) {
         super.onDraw(canvas);
+        //获取图片信息
         Matrix matrix = getImageMatrix();
         RectF rect = new RectF();
         Drawable drawable = getDrawable();
@@ -237,15 +234,21 @@ public class CropCircleImageView extends AppCompatImageView {
             rect.set(0, 0, drawable.getIntrinsicWidth(), drawable.getIntrinsicHeight());
             matrix.mapRect(rect);
         }
-        bitmapRectLeft = rect.left;
-        bitmapRectTop = rect.top;
-        bitmapRectRight = rect.right;
-        bitmapRectBottom = rect.bottom;
-        Log.e("we", drawable.getIntrinsicWidth()+" "+drawable.getIntrinsicHeight());
-        Log.e("dfsd",bitmapRectLeft+" "+bitmapRectTop+" "+bitmapRectRight+" "+bitmapRectBottom);
-
+        if (isInit) {
+            bitmapRectLeft = rect.left;
+            bitmapRectTop = rect.top;
+            bitmapRectRight = rect.right;
+            bitmapRectBottom = rect.bottom;
+            //初始化裁剪区域
+            initClip();
+            isInit = false;
+        }
         /*裁剪区域矩形*/
-        RectF rectF = new RectF(rectLeft, rectTop, rectRight, rectBottom);
+        if (rectF == null) {
+            rectF = new RectF(rectLeft, rectTop, rectRight, rectBottom);
+        } else {
+            rectF.set(rectLeft, rectTop, rectRight, rectBottom);
+        }
         drawBackground(canvas);
         drawClipArea(canvas, rectF);
         drawBorder(canvas, rectF);
@@ -261,35 +264,26 @@ public class CropCircleImageView extends AppCompatImageView {
     private void initClip() {
         //初始化裁剪区位置
         if (isConstant) {
-            //固定比例
-            if (widthScale - heightScale > 0) {
-                ratioType = RATIO_WIDTH;
-                ratio = widthScale / heightScale;
-                //宽大于高
-                rectLeft = initMargin;
-                rectRight = viewWidth - rectLeft;
-                float clipHeight = (rectRight - rectLeft) / ratio;//裁剪区高度
-                rectTop = (viewHeight - clipHeight) / 2;
-                rectBottom = viewHeight - rectTop;
-            } else if (widthScale - heightScale < 0) {
-                ratioType = RATIO_HEIGHT;
-                ratio = heightScale / widthScale;
-                //宽小于高
-                float clipHeight = viewHeight / 2;//裁剪区高度
-                rectTop = (viewHeight - clipHeight) / 2;
-                rectBottom = viewHeight - rectTop;
-                float clipWidth = clipHeight / ratio;
-                rectLeft = (viewWidth - clipWidth) / 2;
-                rectRight = viewWidth - rectLeft;
-            }
+            ratio = widthScale / heightScale;
+        } else {
+            ratio = 1f;
         }
-        if (!isConstant || widthScale - heightScale == 0) {
-            //不固定比例或宽高相等
-            ratioType = RATIO_EQUAL;
-            rectLeft = initMargin;
+        //宽大于高
+        rectLeft = initMargin;
+        rectRight = viewWidth - rectLeft;
+        if (rectRight - rectLeft > bitmapRectRight - bitmapRectLeft) {
+            rectLeft = bitmapRectLeft;
+            rectRight = bitmapRectRight;
+        }
+        float clipHeight = (rectRight - rectLeft) / ratio;//裁剪区高度
+        rectTop = (viewHeight - clipHeight) / 2;
+        rectBottom = viewHeight - rectTop;
+        if (rectBottom - rectTop > bitmapRectBottom - bitmapRectTop) {
+            rectTop = bitmapRectTop;
+            rectBottom = bitmapRectBottom;
+            float clipWidth = (rectBottom - rectTop) * ratio;//裁剪去宽度
+            rectLeft = (viewWidth - clipWidth) / 2;
             rectRight = viewWidth - rectLeft;
-            rectTop = (viewHeight - (rectRight - rectLeft)) / 2;
-            rectBottom = viewHeight - rectTop;
         }
     }
 
@@ -300,203 +294,147 @@ public class CropCircleImageView extends AppCompatImageView {
     private void adjustDraw() {
         if (!isScale) {
             //移动
-            rectTop += oneMoveY;
-            rectBottom += oneMoveY;
-            rectLeft += oneMoveX;
-            rectRight += oneMoveX;
+            if (bitmapRectTop <= rectTop + oneMoveY && rectBottom + oneMoveY <= bitmapRectBottom) {
+                rectTop += oneMoveY;
+                rectBottom += oneMoveY;
+            }
+            if (bitmapRectLeft <= rectLeft + oneMoveX && rectRight + oneMoveX <= bitmapRectRight) {
+                rectLeft += oneMoveX;
+                rectRight += oneMoveX;
+            }
         } else {
             //缩放
             switch (scaleType) {
                 case SCALE_LEFTBOTTOM://缩放左下角
                     if (isConstant) {
                         //固定比例
-                        switch (ratioType) {
-                            case RATIO_EQUAL://宽高相等
-                                rectLeft += oneMoveX;
-                                rectBottom -= oneMoveX;
-                                break;
-                            case RATIO_HEIGHT:
-                                rectLeft += oneMoveX;
-                                rectBottom -= oneMoveX * ratio;
-                                break;
-                            case RATIO_WIDTH:
-                                rectLeft += oneMoveX * ratio;
-                                rectBottom -= oneMoveX;
-                                break;
+                        if (bitmapRectLeft <= rectLeft + oneMoveX * ratio && rectBottom - oneMoveX * ratio <= bitmapRectBottom
+                                && rectRight - (rectLeft + oneMoveX) >= clipMinSize && rectBottom - oneMoveX - rectTop >= clipMinSize) {
+                            rectLeft += oneMoveX * ratio;
+                            rectBottom -= oneMoveX;
                         }
                     } else {
                         //不固定比例
-                        rectLeft += oneMoveX;
-                        rectBottom += oneMoveY;
+                        if (bitmapRectLeft <= rectLeft + oneMoveX && rectBottom + oneMoveY <= bitmapRectBottom
+                                && rectRight - (rectLeft + oneMoveX) >= clipMinSize && rectBottom + oneMoveY - rectTop >= clipMinSize) {
+                            rectLeft += oneMoveX;
+                            rectBottom += oneMoveY;
+                        }
                     }
                     break;
                 case SCALE_LEFTTOP://缩放左上角
                     if (isConstant) {
                         //固定比例
-                        switch (ratioType) {
-                            case RATIO_EQUAL://宽高相等
-                                rectLeft += oneMoveX;
-                                rectTop += oneMoveX;
-                                break;
-                            case RATIO_HEIGHT:
-                                rectLeft += oneMoveX;
-                                rectTop += oneMoveX * ratio;
-                                break;
-                            case RATIO_WIDTH:
-                                rectLeft += oneMoveX * ratio;
-                                rectTop += oneMoveX;
-                                break;
+                        if (bitmapRectLeft <= rectLeft + oneMoveX * ratio && bitmapRectTop <= rectTop + oneMoveX
+                                && rectRight - (rectLeft + oneMoveX * ratio) >= clipMinSize && rectBottom - (oneMoveX + rectTop) >= clipMinSize) {
+                            rectLeft += oneMoveX * ratio;
+                            rectTop += oneMoveX;
                         }
                     } else {
                         //不固定比例
-                        rectLeft += oneMoveX;
-                        rectTop += oneMoveY;
+                        if (bitmapRectLeft <= rectLeft + oneMoveX && bitmapRectTop <= rectTop + oneMoveY
+                                && rectRight - (rectLeft + oneMoveX) >= clipMinSize && rectBottom - (oneMoveY + rectTop) >= clipMinSize) {
+                            rectLeft += oneMoveX;
+                            rectTop += oneMoveY;
+                        }
                     }
                     break;
                 case SCALE_RIGHTTOP://缩放右上角
                     if (isConstant) {
                         //固定比例
-                        switch (ratioType) {
-                            case RATIO_EQUAL://宽高相等
-                                rectRight += oneMoveX;
-                                rectTop -= oneMoveX;
-                                break;
-                            case RATIO_HEIGHT:
-                                rectRight += oneMoveX;
-                                rectTop -= oneMoveX * ratio;
-                                break;
-                            case RATIO_WIDTH:
-                                rectRight += oneMoveX * ratio;
-                                rectTop -= oneMoveX;
-                                break;
+                        if (rectRight + oneMoveX * ratio <= bitmapRectRight && bitmapRectTop <= rectTop - oneMoveX
+                                && (rectRight + oneMoveX * ratio) - rectLeft >= clipMinSize && rectBottom - (rectTop - oneMoveX) >= clipMinSize) {
+                            rectRight += oneMoveX * ratio;
+                            rectTop -= oneMoveX;
                         }
                     } else {
                         //不固定比例
-                        rectRight += oneMoveX;
-                        rectTop += oneMoveY;
+                        if (rectRight + oneMoveX <= bitmapRectRight && bitmapRectTop <= rectTop + oneMoveY
+                                && (rectRight + oneMoveX) - rectLeft >= clipMinSize && rectBottom - (rectTop + oneMoveY) >= clipMinSize) {
+                            rectRight += oneMoveX;
+                            rectTop += oneMoveY;
+                        }
                     }
                     break;
                 case SCALE_RIGHTBOTTOM://缩放右下角
                     if (isConstant) {
                         //固定比例
-                        switch (ratioType) {
-                            case RATIO_EQUAL://宽高相等
-                                rectRight += oneMoveX;
-                                rectBottom += oneMoveX;
-                                break;
-                            case RATIO_HEIGHT:
-                                rectRight += oneMoveX;
-                                rectBottom += oneMoveX * ratio;
-                                break;
-                            case RATIO_WIDTH:
-                                rectRight += oneMoveX * ratio;
-                                rectBottom += oneMoveX;
-                                break;
+                        if (rectRight + oneMoveX * ratio <= bitmapRectRight && rectBottom + oneMoveX <= bitmapRectBottom
+                                && (rectRight + oneMoveX * ratio) - rectLeft >= clipMinSize && (rectBottom + oneMoveX) - rectTop >= clipMinSize) {
+                            rectRight += oneMoveX * ratio;
+                            rectBottom += oneMoveX;
                         }
                     } else {
                         //不固定比例
-                        rectRight += oneMoveX;
-                        rectBottom += oneMoveY;
+                        if (rectRight + oneMoveX <= bitmapRectRight && rectBottom + oneMoveY <= bitmapRectBottom
+                                && (rectRight + oneMoveX) - rectLeft >= clipMinSize && (rectBottom + oneMoveY) - rectTop >= clipMinSize) {
+                            rectRight += oneMoveX;
+                            rectBottom += oneMoveY;
+                        }
                     }
                     break;
                 case SCALE_LEFT://缩放左边
                     if (isConstant) {
                         //固定比例
-                        switch (ratioType) {
-                            case RATIO_EQUAL://宽高相等
-                                rectLeft += oneMoveX;
-                                rectTop += oneMoveX / 2;
-                                rectBottom -= oneMoveX / 2;
-                                break;
-                            case RATIO_HEIGHT:
-                                rectLeft += oneMoveX;
-                                rectTop += (oneMoveX * ratio) / 2;
-                                rectBottom -= (oneMoveX * ratio) / 2;
-                                break;
-                            case RATIO_WIDTH:
-                                rectLeft += oneMoveX * ratio;
-                                rectTop += oneMoveX / 2;
-                                rectBottom -= oneMoveX / 2;
-                                break;
+                        if (bitmapRectLeft <= rectLeft + oneMoveX * ratio && bitmapRectTop <= rectTop + oneMoveX / 2 && rectBottom - oneMoveX / 2 <= bitmapRectBottom
+                                && rectRight - (rectLeft + oneMoveX * ratio) >= clipMinSize && (rectBottom - oneMoveX / 2) - (rectTop + oneMoveX / 2) >= clipMinSize) {
+                            rectLeft += oneMoveX * ratio;
+                            rectTop += oneMoveX / 2;
+                            rectBottom -= oneMoveX / 2;
                         }
                     } else {
                         //不固定比例
-                        rectLeft += oneMoveX;
+                        if (bitmapRectLeft <= rectLeft + oneMoveX
+                                && rectRight - (rectLeft + oneMoveX) >= clipMinSize)
+                            rectLeft += oneMoveX;
                     }
                     break;
                 case SCALE_TOP://缩放上边
                     if (isConstant) {
                         //固定比例
-                        switch (ratioType) {
-                            case RATIO_EQUAL://宽高相等
-                                rectRight -= oneMoveY / 2;
-                                rectTop += oneMoveY;
-                                rectLeft += oneMoveY / 2;
-                                break;
-                            case RATIO_HEIGHT:
-                                rectRight -= oneMoveY / 2;
-                                rectTop += oneMoveY * ratio;
-                                rectLeft += oneMoveY / 2;
-                                break;
-                            case RATIO_WIDTH:
-                                rectRight -= (oneMoveY * ratio) / 2;
-                                rectTop += oneMoveY;
-                                rectLeft += (oneMoveY * ratio) / 2;
-                                break;
+                        if (rectRight - (oneMoveY * ratio) / 2 <= bitmapRectRight && bitmapRectTop <= rectTop + oneMoveY && bitmapRectLeft <= rectLeft + (oneMoveY * ratio) / 2
+                                && (rectRight - (oneMoveY * ratio) / 2) - (rectLeft + (oneMoveY * ratio) / 2) >= clipMinSize && rectBottom - (rectTop + oneMoveY) >= clipMinSize) {
+                            rectRight -= (oneMoveY * ratio) / 2;
+                            rectTop += oneMoveY;
+                            rectLeft += (oneMoveY * ratio) / 2;
                         }
                     } else {
                         //不固定比例
-                        rectTop += oneMoveY;
+                        if (bitmapRectTop <= rectTop + oneMoveY
+                                && rectBottom - (rectTop + oneMoveY) >= clipMinSize)
+                            rectTop += oneMoveY;
                     }
                     break;
                 case SCALE_RIGHT://缩放右边
                     if (isConstant) {
                         //固定比例
-                        switch (ratioType) {
-                            case RATIO_EQUAL://宽高相等
-                                rectRight += oneMoveX;
-                                rectBottom += oneMoveX / 2;
-                                rectTop -= oneMoveX / 2;
-                                break;
-                            case RATIO_HEIGHT:
-                                rectRight += oneMoveX;
-                                rectBottom += (oneMoveX * ratio) / 2;
-                                rectTop -= (oneMoveX * ratio) / 2;
-                                break;
-                            case RATIO_WIDTH:
-                                rectRight += oneMoveX * ratio;
-                                rectBottom += oneMoveX / 2;
-                                rectTop -= oneMoveX / 2;
-                                break;
+                        if (rectRight + oneMoveX * ratio <= bitmapRectRight && rectBottom + oneMoveX / 2 <= bitmapRectBottom && bitmapRectTop <= rectTop - oneMoveX / 2
+                                && (rectRight + oneMoveX * ratio) - rectLeft >= clipMinSize && (rectBottom + oneMoveX / 2) - (rectTop - oneMoveX / 2) >= clipMinSize) {
+                            rectRight += oneMoveX * ratio;
+                            rectBottom += oneMoveX / 2;
+                            rectTop -= oneMoveX / 2;
                         }
                     } else {
                         //不固定比例
-                        rectRight += oneMoveX;
+                        if (rectRight + oneMoveX <= bitmapRectRight
+                                && (rectRight + oneMoveX) - rectLeft >= clipMinSize)
+                            rectRight += oneMoveX;
                     }
                     break;
                 case SCALE_BOTTOM://缩放下边
                     if (isConstant) {
                         //固定比例
-                        switch (ratioType) {
-                            case RATIO_EQUAL://宽高相等
-                                rectRight += oneMoveY / 2;
-                                rectBottom += oneMoveY;
-                                rectLeft -= oneMoveY / 2;
-                                break;
-                            case RATIO_HEIGHT:
-                                rectRight += oneMoveY / 2;
-                                rectBottom += oneMoveY * ratio;
-                                rectLeft -= oneMoveY / 2;
-                                break;
-                            case RATIO_WIDTH:
-                                rectRight += (oneMoveY * ratio) / 2;
-                                rectBottom += oneMoveY;
-                                rectLeft -= (oneMoveY * ratio) / 2;
-                                break;
+                        if (rectRight + (oneMoveY * ratio) / 2 <= bitmapRectRight && rectBottom + oneMoveY <= bitmapRectBottom && bitmapRectLeft <= rectLeft - (oneMoveY * ratio) / 2
+                                && (rectRight + (oneMoveY * ratio) / 2) - (rectLeft - (oneMoveY * ratio) / 2) >= clipMinSize && (rectBottom + oneMoveY) - rectTop >= clipMinSize) {
+                            rectRight += (oneMoveY * ratio) / 2;
+                            rectBottom += oneMoveY;
+                            rectLeft -= (oneMoveY * ratio) / 2;
                         }
                     } else {
                         //不固定比例
-                        rectBottom += oneMoveY;
+                        if (rectBottom + oneMoveY <= bitmapRectBottom
+                                && (rectBottom + oneMoveY) - rectTop >= clipMinSize)
+                            rectBottom += oneMoveY;
                     }
                     break;
             }
@@ -672,6 +610,34 @@ public class CropCircleImageView extends AppCompatImageView {
         canvas.restore();
     }
 
+    /**
+     * dp转px
+     */
+    private int dp2px(float dpValues) {
+        dpValues = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, dpValues, getResources().getDisplayMetrics());
+        return (int) (dpValues + 0.5f);
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    /*-----------------------------------------------------------*/
+
 
     private Bitmap getBitmap(Drawable drawable) {
         if (drawable instanceof BitmapDrawable) {
@@ -694,11 +660,4 @@ public class CropCircleImageView extends AppCompatImageView {
     }
 
 
-    /**
-     * dp转px
-     */
-    private int dp2px(float dpValues) {
-        dpValues = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, dpValues, getResources().getDisplayMetrics());
-        return (int) (dpValues + 0.5f);
-    }
 }
