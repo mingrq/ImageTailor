@@ -1,5 +1,6 @@
 package com.ming.imagetailor_lib.CustomView;
 
+import android.animation.ValueAnimator;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
@@ -21,6 +22,7 @@ import android.util.AttributeSet;
 import android.util.Log;
 import android.util.TypedValue;
 import android.view.MotionEvent;
+import android.widget.ImageView;
 
 /**
  * Author MingRuQi
@@ -70,6 +72,9 @@ public class CropCircleImageView extends AppCompatImageView {
     /*第一点按下的位置*/
     private float oneDownX;
     private float oneDownY;
+    /*第一点抬起的位置*/
+    private float oneUpX;
+    private float oneUpY;
     /*裁剪区属性*/
     private float rectLeft;
     private float rectRight;
@@ -110,8 +115,6 @@ public class CropCircleImageView extends AppCompatImageView {
     private boolean isScale;
     //裁剪区最小尺寸
     private float clipMinSize = (clipBorderCornerMargin + clipBorderLength) * 2 + 2;
-    //裁剪区最大尺寸
-    private float clipMaxSize;
     //是否是第一次初始化
     private boolean isInit = true;
 
@@ -127,8 +130,6 @@ public class CropCircleImageView extends AppCompatImageView {
     private final int SCALE_TOP = 0x000008;//缩放上边
     private final int SCALE_RIGHT = 0x000006;//缩放右边
     private final int SCALE_BOTTOM = 0x000002;//缩放下边
-    private float bitmapWidth;//图片宽度
-    private float bitmapHeight;//图片高度
 
     /**
      * 图片缩放
@@ -137,7 +138,16 @@ public class CropCircleImageView extends AppCompatImageView {
     private float bitmapMaxScaleRatio = 5f;//图片最大缩放比例
     private float bitmapScaleRatio;//图片缩放比例
     //裁剪区域矩形
-    private RectF rectF;
+    private RectF clipRectF;
+    //缩小临界值
+    private float shrinkCritical;
+    //放大临界值
+    private float magnifyCritical;
+    //最小裁剪尺寸
+    private float minClipSize = dp2px(200);
+    //裁剪区缩放大小
+    private float clipScaleSize;
+    private Matrix matrix;
 
 
     public CropCircleImageView(Context context) {
@@ -205,10 +215,56 @@ public class CropCircleImageView extends AppCompatImageView {
                 break;
             case MotionEvent.ACTION_UP:
                 NOWSTATE = ACTIONUP;
+                oneUpX = event.getX();
+                oneUpY = event.getY();
+                clipSelectZoom();
                 break;
         }
         invalidate();//重绘
         return true;
+    }
+
+    /**
+     * 裁剪选择缩放
+     */
+    private void clipSelectZoom() {
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.HONEYCOMB) {
+            ValueAnimator animator = ValueAnimator.ofFloat(0,500f);
+        }
+        switch (scaleType) {
+            case SCALE_LEFTBOTTOM:
+                if (oneUpX - oneDownX > 0 && rectRight - rectLeft < magnifyCritical) {
+                    //手动缩小裁剪去，自动放大裁剪区
+                    clipScaleSize = magnifyCritical - (rectRight - rectLeft);
+                    rectLeft -= clipScaleSize;
+                    rectBottom += clipScaleSize;
+                }
+                break;
+            case SCALE_LEFTTOP:
+                if (oneUpX - oneDownX > 0 && rectRight - rectLeft < magnifyCritical) {
+                    //手动缩小裁剪去，自动放大裁剪区
+                    clipScaleSize = magnifyCritical - (rectRight - rectLeft);
+                    rectLeft -= clipScaleSize;
+                    rectTop -= clipScaleSize;
+                }
+                break;
+            case SCALE_RIGHTTOP:
+                if (oneUpX - oneDownX < 0 && rectRight - rectLeft < magnifyCritical) {
+                    //手动缩小裁剪去，自动放大裁剪区
+                    clipScaleSize = magnifyCritical - (rectRight - rectLeft);
+                    rectRight += clipScaleSize;
+                    rectTop -= clipScaleSize;
+                }
+                break;
+            case SCALE_RIGHTBOTTOM:
+                if (oneUpX - oneDownX < 0 && rectRight - rectLeft < magnifyCritical) {
+                    //手动缩小裁剪去，自动放大裁剪区
+                    clipScaleSize = magnifyCritical - (rectRight - rectLeft);
+                    rectRight += clipScaleSize;
+                    rectBottom += clipScaleSize;
+                }
+                break;
+        }
     }
 
     @Override
@@ -219,22 +275,23 @@ public class CropCircleImageView extends AppCompatImageView {
             viewWidth = MeasureSpec.getSize(widthMeasureSpec);
             //获取初始高度
             viewHeight = MeasureSpec.getSize(heightMeasureSpec);
+            shrinkCritical = viewWidth / 2;
+            magnifyCritical = viewWidth / 2 + dp2px(10);
         }
     }
-
 
     @Override
     protected void onDraw(Canvas canvas) {
         super.onDraw(canvas);
-        //获取图片信息
-        Matrix matrix = getImageMatrix();
-        RectF rect = new RectF();
-        Drawable drawable = getDrawable();
-        if (drawable != null) {
-            rect.set(0, 0, drawable.getIntrinsicWidth(), drawable.getIntrinsicHeight());
-            matrix.mapRect(rect);
-        }
         if (isInit) {
+            matrix = getImageMatrix();
+            RectF rect = new RectF();
+            Drawable drawable = getDrawable();
+            if (drawable != null) {
+                rect.set(0, 0, drawable.getIntrinsicWidth(), drawable.getIntrinsicHeight());
+                matrix.mapRect(rect);
+            }
+            //获取图片信息
             bitmapRectLeft = rect.left;
             bitmapRectTop = rect.top;
             bitmapRectRight = rect.right;
@@ -244,17 +301,18 @@ public class CropCircleImageView extends AppCompatImageView {
             isInit = false;
         }
         /*裁剪区域矩形*/
-        if (rectF == null) {
-            rectF = new RectF(rectLeft, rectTop, rectRight, rectBottom);
+        if (clipRectF == null) {
+            clipRectF = new RectF(rectLeft, rectTop, rectRight, rectBottom);
         } else {
-            rectF.set(rectLeft, rectTop, rectRight, rectBottom);
+            clipRectF.set(rectLeft, rectTop, rectRight, rectBottom);
         }
+
         drawBackground(canvas);
-        drawClipArea(canvas, rectF);
-        drawBorder(canvas, rectF);
-        drawNook(canvas, rectF);
+        drawClipArea(canvas, clipRectF);
+        drawBorder(canvas, clipRectF);
+        drawNook(canvas, clipRectF);
         if (NOWSTATE != ACTIONUP) {
-            drawGridding(canvas, rectF);
+            drawGridding(canvas, clipRectF);
         }
     }
 
@@ -286,7 +344,6 @@ public class CropCircleImageView extends AppCompatImageView {
             rectRight = viewWidth - rectLeft;
         }
     }
-
 
     /**
      * 根据手指动作调整裁剪区
