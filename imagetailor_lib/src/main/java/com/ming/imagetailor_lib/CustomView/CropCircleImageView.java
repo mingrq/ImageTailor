@@ -147,6 +147,8 @@ public class CropCircleImageView extends AppCompatImageView {
     private float minClipSize = dp2px(200);
     //裁剪区缩放大小
     private float clipScaleSize;
+    //裁剪区缩放比例
+    private float clipScaleRatio;
     private Matrix matrix;
 
 
@@ -212,6 +214,7 @@ public class CropCircleImageView extends AppCompatImageView {
                 oneNowMoveX = event.getX();
                 oneNowMoveY = event.getY();
                 adjustDraw();
+                invalidate();//重绘
                 break;
             case MotionEvent.ACTION_UP:
                 NOWSTATE = ACTIONUP;
@@ -220,7 +223,7 @@ public class CropCircleImageView extends AppCompatImageView {
                 clipSelectZoom();
                 break;
         }
-        invalidate();//重绘
+
         return true;
     }
 
@@ -228,24 +231,21 @@ public class CropCircleImageView extends AppCompatImageView {
      * 裁剪选择缩放
      */
     private void clipSelectZoom() {
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.HONEYCOMB) {
-            ValueAnimator animator = ValueAnimator.ofFloat(0,500f);
-        }
+
         switch (scaleType) {
             case SCALE_LEFTBOTTOM:
                 if (oneUpX - oneDownX > 0 && rectRight - rectLeft < magnifyCritical) {
                     //手动缩小裁剪去，自动放大裁剪区
+                    clipScaleRatio = magnifyCritical / (rectRight - rectLeft);
                     clipScaleSize = magnifyCritical - (rectRight - rectLeft);
-                    rectLeft -= clipScaleSize;
-                    rectBottom += clipScaleSize;
+
                 }
                 break;
             case SCALE_LEFTTOP:
                 if (oneUpX - oneDownX > 0 && rectRight - rectLeft < magnifyCritical) {
                     //手动缩小裁剪去，自动放大裁剪区
                     clipScaleSize = magnifyCritical - (rectRight - rectLeft);
-                    rectLeft -= clipScaleSize;
-                    rectTop -= clipScaleSize;
+
                 }
                 break;
             case SCALE_RIGHTTOP:
@@ -265,6 +265,19 @@ public class CropCircleImageView extends AppCompatImageView {
                 }
                 break;
         }
+        ValueAnimator animator = ValueAnimator.ofFloat(0, clipScaleRatio);
+        animator.setDuration(1000);
+        animator.setRepeatCount(0);
+        animator.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
+            @Override
+            public void onAnimationUpdate(ValueAnimator animation) {
+                float currentValue = (float) animation.getAnimatedValue();
+                rectLeft -= (clipScaleSize /clipScaleRatio)* currentValue;
+                rectBottom += (clipScaleSize /clipScaleRatio)* currentValue;
+                invalidate();//重绘
+            }
+        });
+        animator.start();
     }
 
     @Override
