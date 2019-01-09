@@ -22,7 +22,6 @@ import android.util.AttributeSet;
 import android.util.Log;
 import android.util.TypedValue;
 import android.view.MotionEvent;
-import android.widget.ImageView;
 
 /**
  * Author MingRuQi
@@ -80,7 +79,7 @@ public class CropCircleImageView extends AppCompatImageView {
     private float rectRight;
     private float rectTop;
     private float rectBottom;
-    /*图片缩放属性*/
+    /*图片缩放位置属性*/
     private float bitmapScaleRectLeft;
     private float bitmapScaleRectRight;
     private float bitmapScaleRectTop;
@@ -135,7 +134,7 @@ public class CropCircleImageView extends AppCompatImageView {
      * 图片缩放
      */
     private float bitmapMinScaleRatio;//图片最小缩放比例
-    private float bitmapMaxScaleRatio = 5f;//图片最大缩放比例
+    private float bitmapMaxScaleRatio = 2f;//图片最大缩放比例
     private float bitmapScaleRatio;//图片缩放比例
     //裁剪区域矩形
     private RectF clipRectF;
@@ -150,6 +149,11 @@ public class CropCircleImageView extends AppCompatImageView {
     //裁剪区缩放比例
     private float clipScaleRatio;
     private Matrix matrix;
+    private float left;
+    private float bottom;
+    private float top;
+    private float right;
+    private ValueAnimator animator;
 
 
     public CropCircleImageView(Context context) {
@@ -163,6 +167,7 @@ public class CropCircleImageView extends AppCompatImageView {
     public CropCircleImageView(Context context, AttributeSet attrs, int defStyleAttr) {
         super(context, attrs, defStyleAttr);
         this.context = context;
+
     }
 
     /**
@@ -214,70 +219,27 @@ public class CropCircleImageView extends AppCompatImageView {
                 oneNowMoveX = event.getX();
                 oneNowMoveY = event.getY();
                 adjustDraw();
-                invalidate();//重绘
                 break;
             case MotionEvent.ACTION_UP:
                 NOWSTATE = ACTIONUP;
                 oneUpX = event.getX();
                 oneUpY = event.getY();
-                clipSelectZoom();
+                left = rectLeft;
+                top = rectTop;
+                right = rectRight;
+                bottom = rectBottom;
+                clipBitmapZoom(rectRight);
                 break;
         }
-
+        invalidate();//重绘
         return true;
     }
 
     /**
-     * 裁剪选择缩放
+     * 裁剪图片缩放
      */
-    private void clipSelectZoom() {
-
-        switch (scaleType) {
-            case SCALE_LEFTBOTTOM:
-                if (oneUpX - oneDownX > 0 && rectRight - rectLeft < magnifyCritical) {
-                    //手动缩小裁剪去，自动放大裁剪区
-                    clipScaleRatio = magnifyCritical / (rectRight - rectLeft);
-                    clipScaleSize = magnifyCritical - (rectRight - rectLeft);
-
-                }
-                break;
-            case SCALE_LEFTTOP:
-                if (oneUpX - oneDownX > 0 && rectRight - rectLeft < magnifyCritical) {
-                    //手动缩小裁剪去，自动放大裁剪区
-                    clipScaleSize = magnifyCritical - (rectRight - rectLeft);
-
-                }
-                break;
-            case SCALE_RIGHTTOP:
-                if (oneUpX - oneDownX < 0 && rectRight - rectLeft < magnifyCritical) {
-                    //手动缩小裁剪去，自动放大裁剪区
-                    clipScaleSize = magnifyCritical - (rectRight - rectLeft);
-                    rectRight += clipScaleSize;
-                    rectTop -= clipScaleSize;
-                }
-                break;
-            case SCALE_RIGHTBOTTOM:
-                if (oneUpX - oneDownX < 0 && rectRight - rectLeft < magnifyCritical) {
-                    //手动缩小裁剪去，自动放大裁剪区
-                    clipScaleSize = magnifyCritical - (rectRight - rectLeft);
-                    rectRight += clipScaleSize;
-                    rectBottom += clipScaleSize;
-                }
-                break;
-        }
-        ValueAnimator animator = ValueAnimator.ofFloat(0, clipScaleRatio);
-        animator.setDuration(1000);
-        animator.setRepeatCount(0);
-        animator.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
-            @Override
-            public void onAnimationUpdate(ValueAnimator animation) {
-                float currentValue = (float) animation.getAnimatedValue();
-                rectLeft -= (clipScaleSize /clipScaleRatio)* currentValue;
-                rectBottom += (clipScaleSize /clipScaleRatio)* currentValue;
-                invalidate();//重绘
-            }
-        });
-        animator.start();
+    private void clipBitmapZoom(float scaleX) {
+        matrix.postScale(1.1f,1.1f,scaleX,viewHeight/2);
     }
 
     @Override
@@ -290,6 +252,7 @@ public class CropCircleImageView extends AppCompatImageView {
             viewHeight = MeasureSpec.getSize(heightMeasureSpec);
             shrinkCritical = viewWidth / 2;
             magnifyCritical = viewWidth / 2 + dp2px(10);
+
         }
     }
 
@@ -309,6 +272,7 @@ public class CropCircleImageView extends AppCompatImageView {
             bitmapRectTop = rect.top;
             bitmapRectRight = rect.right;
             bitmapRectBottom = rect.bottom;
+            bitmapMinScaleRatio = (bitmapRectRight - bitmapRectLeft) / (drawable.getBounds().right - drawable.getBounds().left);
             //初始化裁剪区域
             initClip();
             isInit = false;
@@ -372,6 +336,7 @@ public class CropCircleImageView extends AppCompatImageView {
                 rectLeft += oneMoveX;
                 rectRight += oneMoveX;
             }
+
         } else {
             //缩放
             switch (scaleType) {
