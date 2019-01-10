@@ -85,10 +85,7 @@ public class CropCircleImageView extends AppCompatImageView {
     private float bitmapScaleRectTop;
     private float bitmapScaleRectBottom;
     /*图片初始位置属性*/
-    private float bitmapRectLeft;
-    private float bitmapRectRight;
-    private float bitmapRectTop;
-    private float bitmapRectBottom;
+    RectF bitmapInitRect;
     /*第一点滑动的距离*/
     private float oneMoveY;
     private float oneMoveX;
@@ -138,6 +135,8 @@ public class CropCircleImageView extends AppCompatImageView {
     private float bitmapScaleRatio;//图片缩放比例
     //裁剪区域矩形
     private RectF clipRectF;
+    //裁剪区域活动矩形
+    private RectF clipEventRectF;
     //缩小临界值
     private float shrinkCritical;
     //放大临界值
@@ -154,7 +153,7 @@ public class CropCircleImageView extends AppCompatImageView {
     private float top;
     private float right;
     private ValueAnimator animator;
-
+    Drawable drawable = null;
 
     public CropCircleImageView(Context context) {
         this(context, null);
@@ -167,7 +166,7 @@ public class CropCircleImageView extends AppCompatImageView {
     public CropCircleImageView(Context context, AttributeSet attrs, int defStyleAttr) {
         super(context, attrs, defStyleAttr);
         this.context = context;
-
+        clipEventRectF = new RectF();
     }
 
     /**
@@ -239,7 +238,13 @@ public class CropCircleImageView extends AppCompatImageView {
      * 裁剪图片缩放
      */
     private void clipBitmapZoom(float scaleX) {
-        matrix.postScale(1.1f,1.1f,scaleX,viewHeight/2);
+        matrix.postScale(1.1f, 1.1f, scaleX, viewHeight / 2);
+        clipEventRectF.set(0f, 0f, drawable.getIntrinsicWidth(), drawable.getIntrinsicHeight());
+        matrix.mapRect(clipEventRectF);
+        Log.e("g", String.valueOf(clipEventRectF.top));
+        Log.e("g", String.valueOf(clipEventRectF.right));
+        Log.e("g", String.valueOf(clipEventRectF.left));
+        Log.e("g", String.valueOf(clipEventRectF.bottom));
     }
 
     @Override
@@ -259,20 +264,17 @@ public class CropCircleImageView extends AppCompatImageView {
     @Override
     protected void onDraw(Canvas canvas) {
         super.onDraw(canvas);
+        //获取图片信息
         if (isInit) {
             matrix = getImageMatrix();
-            RectF rect = new RectF();
-            Drawable drawable = getDrawable();
-            if (drawable != null) {
-                rect.set(0, 0, drawable.getIntrinsicWidth(), drawable.getIntrinsicHeight());
-                matrix.mapRect(rect);
+            if (drawable == null) {
+                drawable = getDrawable();
             }
-            //获取图片信息
-            bitmapRectLeft = rect.left;
-            bitmapRectTop = rect.top;
-            bitmapRectRight = rect.right;
-            bitmapRectBottom = rect.bottom;
-            bitmapMinScaleRatio = (bitmapRectRight - bitmapRectLeft) / (drawable.getBounds().right - drawable.getBounds().left);
+            clipEventRectF.set(0f, 0f, drawable.getIntrinsicWidth(), drawable.getIntrinsicHeight());
+            matrix.mapRect(clipEventRectF);
+            Log.e("clipEventRectF.bottom=", String.valueOf(clipEventRectF.bottom));
+            bitmapInitRect = clipEventRectF;
+            bitmapMinScaleRatio = (bitmapInitRect.right - bitmapInitRect.left) / (drawable.getBounds().right - drawable.getBounds().left);
             //初始化裁剪区域
             initClip();
             isInit = false;
@@ -306,16 +308,16 @@ public class CropCircleImageView extends AppCompatImageView {
         //宽大于高
         rectLeft = initMargin;
         rectRight = viewWidth - rectLeft;
-        if (rectRight - rectLeft > bitmapRectRight - bitmapRectLeft) {
-            rectLeft = bitmapRectLeft;
-            rectRight = bitmapRectRight;
+        if (rectRight - rectLeft > bitmapInitRect.right - bitmapInitRect.left) {
+            rectLeft = bitmapInitRect.left;
+            rectRight = bitmapInitRect.right;
         }
         float clipHeight = (rectRight - rectLeft) / ratio;//裁剪区高度
         rectTop = (viewHeight - clipHeight) / 2;
         rectBottom = viewHeight - rectTop;
-        if (rectBottom - rectTop > bitmapRectBottom - bitmapRectTop) {
-            rectTop = bitmapRectTop;
-            rectBottom = bitmapRectBottom;
+        if (rectBottom - rectTop > bitmapInitRect.bottom - bitmapInitRect.top) {
+            rectTop = bitmapInitRect.top;
+            rectBottom = bitmapInitRect.bottom;
             float clipWidth = (rectBottom - rectTop) * ratio;//裁剪去宽度
             rectLeft = (viewWidth - clipWidth) / 2;
             rectRight = viewWidth - rectLeft;
@@ -328,11 +330,11 @@ public class CropCircleImageView extends AppCompatImageView {
     private void adjustDraw() {
         if (!isScale) {
             //移动
-            if (bitmapRectTop <= rectTop + oneMoveY && rectBottom + oneMoveY <= bitmapRectBottom) {
+            if (clipEventRectF.top <= rectTop + oneMoveY && rectBottom + oneMoveY <= clipEventRectF.bottom && rectTop + oneMoveY >= 0 && rectBottom + oneMoveY <= viewHeight) {
                 rectTop += oneMoveY;
                 rectBottom += oneMoveY;
             }
-            if (bitmapRectLeft <= rectLeft + oneMoveX && rectRight + oneMoveX <= bitmapRectRight) {
+            if (clipEventRectF.left <= rectLeft + oneMoveX && rectRight + oneMoveX <= clipEventRectF.right&&0 <= rectLeft + oneMoveX && rectRight + oneMoveX <= viewWidth) {
                 rectLeft += oneMoveX;
                 rectRight += oneMoveX;
             }
@@ -343,14 +345,14 @@ public class CropCircleImageView extends AppCompatImageView {
                 case SCALE_LEFTBOTTOM://缩放左下角
                     if (isConstant) {
                         //固定比例
-                        if (bitmapRectLeft <= rectLeft + oneMoveX * ratio && rectBottom - oneMoveX * ratio <= bitmapRectBottom
+                        if (bitmapInitRect.left <= rectLeft + oneMoveX * ratio && rectBottom - oneMoveX * ratio <= bitmapInitRect.bottom
                                 && rectRight - (rectLeft + oneMoveX) >= clipMinSize && rectBottom - oneMoveX - rectTop >= clipMinSize) {
                             rectLeft += oneMoveX * ratio;
                             rectBottom -= oneMoveX;
                         }
                     } else {
                         //不固定比例
-                        if (bitmapRectLeft <= rectLeft + oneMoveX && rectBottom + oneMoveY <= bitmapRectBottom
+                        if (bitmapInitRect.left <= rectLeft + oneMoveX && rectBottom + oneMoveY <= bitmapInitRect.bottom
                                 && rectRight - (rectLeft + oneMoveX) >= clipMinSize && rectBottom + oneMoveY - rectTop >= clipMinSize) {
                             rectLeft += oneMoveX;
                             rectBottom += oneMoveY;
@@ -360,14 +362,14 @@ public class CropCircleImageView extends AppCompatImageView {
                 case SCALE_LEFTTOP://缩放左上角
                     if (isConstant) {
                         //固定比例
-                        if (bitmapRectLeft <= rectLeft + oneMoveX * ratio && bitmapRectTop <= rectTop + oneMoveX
+                        if (bitmapInitRect.left <= rectLeft + oneMoveX * ratio && bitmapInitRect.top <= rectTop + oneMoveX
                                 && rectRight - (rectLeft + oneMoveX * ratio) >= clipMinSize && rectBottom - (oneMoveX + rectTop) >= clipMinSize) {
                             rectLeft += oneMoveX * ratio;
                             rectTop += oneMoveX;
                         }
                     } else {
                         //不固定比例
-                        if (bitmapRectLeft <= rectLeft + oneMoveX && bitmapRectTop <= rectTop + oneMoveY
+                        if (bitmapInitRect.left <= rectLeft + oneMoveX && bitmapInitRect.top <= rectTop + oneMoveY
                                 && rectRight - (rectLeft + oneMoveX) >= clipMinSize && rectBottom - (oneMoveY + rectTop) >= clipMinSize) {
                             rectLeft += oneMoveX;
                             rectTop += oneMoveY;
@@ -377,14 +379,14 @@ public class CropCircleImageView extends AppCompatImageView {
                 case SCALE_RIGHTTOP://缩放右上角
                     if (isConstant) {
                         //固定比例
-                        if (rectRight + oneMoveX * ratio <= bitmapRectRight && bitmapRectTop <= rectTop - oneMoveX
+                        if (rectRight + oneMoveX * ratio <= bitmapInitRect.right && bitmapInitRect.top <= rectTop - oneMoveX
                                 && (rectRight + oneMoveX * ratio) - rectLeft >= clipMinSize && rectBottom - (rectTop - oneMoveX) >= clipMinSize) {
                             rectRight += oneMoveX * ratio;
                             rectTop -= oneMoveX;
                         }
                     } else {
                         //不固定比例
-                        if (rectRight + oneMoveX <= bitmapRectRight && bitmapRectTop <= rectTop + oneMoveY
+                        if (rectRight + oneMoveX <= bitmapInitRect.right && bitmapInitRect.top <= rectTop + oneMoveY
                                 && (rectRight + oneMoveX) - rectLeft >= clipMinSize && rectBottom - (rectTop + oneMoveY) >= clipMinSize) {
                             rectRight += oneMoveX;
                             rectTop += oneMoveY;
@@ -394,14 +396,14 @@ public class CropCircleImageView extends AppCompatImageView {
                 case SCALE_RIGHTBOTTOM://缩放右下角
                     if (isConstant) {
                         //固定比例
-                        if (rectRight + oneMoveX * ratio <= bitmapRectRight && rectBottom + oneMoveX <= bitmapRectBottom
+                        if (rectRight + oneMoveX * ratio <= bitmapInitRect.right && rectBottom + oneMoveX <= bitmapInitRect.bottom
                                 && (rectRight + oneMoveX * ratio) - rectLeft >= clipMinSize && (rectBottom + oneMoveX) - rectTop >= clipMinSize) {
                             rectRight += oneMoveX * ratio;
                             rectBottom += oneMoveX;
                         }
                     } else {
                         //不固定比例
-                        if (rectRight + oneMoveX <= bitmapRectRight && rectBottom + oneMoveY <= bitmapRectBottom
+                        if (rectRight + oneMoveX <= bitmapInitRect.right && rectBottom + oneMoveY <= bitmapInitRect.bottom
                                 && (rectRight + oneMoveX) - rectLeft >= clipMinSize && (rectBottom + oneMoveY) - rectTop >= clipMinSize) {
                             rectRight += oneMoveX;
                             rectBottom += oneMoveY;
@@ -411,7 +413,7 @@ public class CropCircleImageView extends AppCompatImageView {
                 case SCALE_LEFT://缩放左边
                     if (isConstant) {
                         //固定比例
-                        if (bitmapRectLeft <= rectLeft + oneMoveX * ratio && bitmapRectTop <= rectTop + oneMoveX / 2 && rectBottom - oneMoveX / 2 <= bitmapRectBottom
+                        if (bitmapInitRect.left <= rectLeft + oneMoveX * ratio && bitmapInitRect.top <= rectTop + oneMoveX / 2 && rectBottom - oneMoveX / 2 <= bitmapInitRect.bottom
                                 && rectRight - (rectLeft + oneMoveX * ratio) >= clipMinSize && (rectBottom - oneMoveX / 2) - (rectTop + oneMoveX / 2) >= clipMinSize) {
                             rectLeft += oneMoveX * ratio;
                             rectTop += oneMoveX / 2;
@@ -419,7 +421,7 @@ public class CropCircleImageView extends AppCompatImageView {
                         }
                     } else {
                         //不固定比例
-                        if (bitmapRectLeft <= rectLeft + oneMoveX
+                        if (bitmapInitRect.left <= rectLeft + oneMoveX
                                 && rectRight - (rectLeft + oneMoveX) >= clipMinSize)
                             rectLeft += oneMoveX;
                     }
@@ -427,7 +429,7 @@ public class CropCircleImageView extends AppCompatImageView {
                 case SCALE_TOP://缩放上边
                     if (isConstant) {
                         //固定比例
-                        if (rectRight - (oneMoveY * ratio) / 2 <= bitmapRectRight && bitmapRectTop <= rectTop + oneMoveY && bitmapRectLeft <= rectLeft + (oneMoveY * ratio) / 2
+                        if (rectRight - (oneMoveY * ratio) / 2 <= bitmapInitRect.right && bitmapInitRect.top <= rectTop + oneMoveY && bitmapInitRect.left <= rectLeft + (oneMoveY * ratio) / 2
                                 && (rectRight - (oneMoveY * ratio) / 2) - (rectLeft + (oneMoveY * ratio) / 2) >= clipMinSize && rectBottom - (rectTop + oneMoveY) >= clipMinSize) {
                             rectRight -= (oneMoveY * ratio) / 2;
                             rectTop += oneMoveY;
@@ -435,7 +437,7 @@ public class CropCircleImageView extends AppCompatImageView {
                         }
                     } else {
                         //不固定比例
-                        if (bitmapRectTop <= rectTop + oneMoveY
+                        if (bitmapInitRect.top <= rectTop + oneMoveY
                                 && rectBottom - (rectTop + oneMoveY) >= clipMinSize)
                             rectTop += oneMoveY;
                     }
@@ -443,7 +445,7 @@ public class CropCircleImageView extends AppCompatImageView {
                 case SCALE_RIGHT://缩放右边
                     if (isConstant) {
                         //固定比例
-                        if (rectRight + oneMoveX * ratio <= bitmapRectRight && rectBottom + oneMoveX / 2 <= bitmapRectBottom && bitmapRectTop <= rectTop - oneMoveX / 2
+                        if (rectRight + oneMoveX * ratio <= bitmapInitRect.right && rectBottom + oneMoveX / 2 <= bitmapInitRect.bottom && bitmapInitRect.top <= rectTop - oneMoveX / 2
                                 && (rectRight + oneMoveX * ratio) - rectLeft >= clipMinSize && (rectBottom + oneMoveX / 2) - (rectTop - oneMoveX / 2) >= clipMinSize) {
                             rectRight += oneMoveX * ratio;
                             rectBottom += oneMoveX / 2;
@@ -451,7 +453,7 @@ public class CropCircleImageView extends AppCompatImageView {
                         }
                     } else {
                         //不固定比例
-                        if (rectRight + oneMoveX <= bitmapRectRight
+                        if (rectRight + oneMoveX <= bitmapInitRect.right
                                 && (rectRight + oneMoveX) - rectLeft >= clipMinSize)
                             rectRight += oneMoveX;
                     }
@@ -459,7 +461,7 @@ public class CropCircleImageView extends AppCompatImageView {
                 case SCALE_BOTTOM://缩放下边
                     if (isConstant) {
                         //固定比例
-                        if (rectRight + (oneMoveY * ratio) / 2 <= bitmapRectRight && rectBottom + oneMoveY <= bitmapRectBottom && bitmapRectLeft <= rectLeft - (oneMoveY * ratio) / 2
+                        if (rectRight + (oneMoveY * ratio) / 2 <= bitmapInitRect.right && rectBottom + oneMoveY <= bitmapInitRect.bottom && bitmapInitRect.left <= rectLeft - (oneMoveY * ratio) / 2
                                 && (rectRight + (oneMoveY * ratio) / 2) - (rectLeft - (oneMoveY * ratio) / 2) >= clipMinSize && (rectBottom + oneMoveY) - rectTop >= clipMinSize) {
                             rectRight += (oneMoveY * ratio) / 2;
                             rectBottom += oneMoveY;
@@ -467,7 +469,7 @@ public class CropCircleImageView extends AppCompatImageView {
                         }
                     } else {
                         //不固定比例
-                        if (rectBottom + oneMoveY <= bitmapRectBottom
+                        if (rectBottom + oneMoveY <= bitmapInitRect.bottom
                                 && (rectBottom + oneMoveY) - rectTop >= clipMinSize)
                             rectBottom += oneMoveY;
                     }
