@@ -74,18 +74,10 @@ public class CropCircleImageView extends AppCompatImageView {
     /*第一点抬起的位置*/
     private float oneUpX;
     private float oneUpY;
-    /*裁剪区属性*/
-    private float rectLeft;
-    private float rectRight;
-    private float rectTop;
-    private float rectBottom;
-    /*图片缩放位置属性*/
-    private float bitmapScaleRectLeft;
-    private float bitmapScaleRectRight;
-    private float bitmapScaleRectTop;
-    private float bitmapScaleRectBottom;
     /*图片初始位置属性*/
     RectF bitmapInitRect;
+    /*图片初始位置属性*/
+    RectF bitmapRectF;
     /*第一点滑动的距离*/
     private float oneMoveY;
     private float oneMoveX;
@@ -135,7 +127,7 @@ public class CropCircleImageView extends AppCompatImageView {
     private float bitmapScaleRatio;//图片缩放比例
     //裁剪区域矩形
     private RectF clipRectF;
-    //裁剪区域活动矩形
+    //裁剪活动区域矩形
     private RectF clipEventRectF;
     //缩小临界值
     private float shrinkCritical;
@@ -148,10 +140,6 @@ public class CropCircleImageView extends AppCompatImageView {
     //裁剪区缩放比例
     private float clipScaleRatio;
     private Matrix matrix;
-    private float left;
-    private float bottom;
-    private float top;
-    private float right;
     private ValueAnimator animator;
     Drawable drawable = null;
 
@@ -167,6 +155,9 @@ public class CropCircleImageView extends AppCompatImageView {
         super(context, attrs, defStyleAttr);
         this.context = context;
         clipEventRectF = new RectF();
+        clipRectF = new RectF();
+        bitmapInitRect = new RectF();
+        bitmapRectF = new RectF();
     }
 
     /**
@@ -207,7 +198,8 @@ public class CropCircleImageView extends AppCompatImageView {
                 NOWSTATE = ACTIONDOWN;
                 oneNowMoveX = oneDownX = event.getX();
                 oneNowMoveY = oneDownY = event.getY();
-                isScale = actionIsScale();
+                isScale = clipRectF.contains(oneDownX, oneDownY);
+                Log.e("adsf", String.valueOf(isScale));
                 //获取缩放缩放模式
                 scaleType = actionScaleType();
                 break;
@@ -223,28 +215,43 @@ public class CropCircleImageView extends AppCompatImageView {
                 NOWSTATE = ACTIONUP;
                 oneUpX = event.getX();
                 oneUpY = event.getY();
-                left = rectLeft;
-                top = rectTop;
-                right = rectRight;
-                bottom = rectBottom;
-                clipBitmapZoom(rectRight);
+                bitmapZoom(clipEventRectF.right);
                 break;
         }
         invalidate();//重绘
         return true;
     }
 
+
     /**
-     * 裁剪图片缩放
+     * 图片缩放
      */
-    private void clipBitmapZoom(float scaleX) {
-        matrix.postScale(1.1f, 1.1f, scaleX, viewHeight / 2);
-        clipEventRectF.set(0f, 0f, drawable.getIntrinsicWidth(), drawable.getIntrinsicHeight());
-        matrix.mapRect(clipEventRectF);
-        Log.e("g", String.valueOf(clipEventRectF.top));
-        Log.e("g", String.valueOf(clipEventRectF.right));
-        Log.e("g", String.valueOf(clipEventRectF.left));
-        Log.e("g", String.valueOf(clipEventRectF.bottom));
+    private void bitmapZoom(float scale) {
+        if (viewWidth <= (bitmapInitRect.right - bitmapInitRect.left)) {
+            matrix.postScale(1.1f, 1.1f, scale, viewHeight / 2);
+        } else {
+            matrix.postScale(1.1f, 1.1f, viewWidth / 2, scale);
+        }
+        bitmapRectF.set(0f, 0f, drawable.getIntrinsicWidth(), drawable.getIntrinsicHeight());
+        matrix.mapRect(bitmapRectF);
+        if (bitmapRectF.contains(0, 0, viewWidth, viewHeight)) {
+            clipEventRectF.set(0, 0, viewWidth, viewHeight);
+        } else if (bitmapRectF.width() > viewWidth) {
+            clipEventRectF.set(0, bitmapRectF.top, viewWidth, bitmapRectF.bottom);
+        } else if (bitmapRectF.height() > viewHeight) {
+            clipEventRectF.set(bitmapRectF.left, 0, bitmapRectF.right, viewHeight);
+        } else {
+            clipEventRectF.set(bitmapRectF);
+        }
+
+    }
+
+
+    /**
+     * 图片移动
+     */
+    private void bitmapMove(float dx, float dy) {
+        matrix.postTranslate(dx, dy);
     }
 
     @Override
@@ -257,7 +264,6 @@ public class CropCircleImageView extends AppCompatImageView {
             viewHeight = MeasureSpec.getSize(heightMeasureSpec);
             shrinkCritical = viewWidth / 2;
             magnifyCritical = viewWidth / 2 + dp2px(10);
-
         }
     }
 
@@ -270,20 +276,14 @@ public class CropCircleImageView extends AppCompatImageView {
             if (drawable == null) {
                 drawable = getDrawable();
             }
-            clipEventRectF.set(0f, 0f, drawable.getIntrinsicWidth(), drawable.getIntrinsicHeight());
-            matrix.mapRect(clipEventRectF);
-            Log.e("clipEventRectF.bottom=", String.valueOf(clipEventRectF.bottom));
-            bitmapInitRect = clipEventRectF;
+            bitmapInitRect.set(0f, 0f, drawable.getIntrinsicWidth(), drawable.getIntrinsicHeight());
+            matrix.mapRect(bitmapInitRect);
+            clipEventRectF.set(bitmapInitRect);
+            bitmapRectF.set(bitmapInitRect);
             bitmapMinScaleRatio = (bitmapInitRect.right - bitmapInitRect.left) / (drawable.getBounds().right - drawable.getBounds().left);
             //初始化裁剪区域
             initClip();
             isInit = false;
-        }
-        /*裁剪区域矩形*/
-        if (clipRectF == null) {
-            clipRectF = new RectF(rectLeft, rectTop, rectRight, rectBottom);
-        } else {
-            clipRectF.set(rectLeft, rectTop, rectRight, rectBottom);
         }
 
         drawBackground(canvas);
@@ -306,21 +306,21 @@ public class CropCircleImageView extends AppCompatImageView {
             ratio = 1f;
         }
         //宽大于高
-        rectLeft = initMargin;
-        rectRight = viewWidth - rectLeft;
-        if (rectRight - rectLeft > bitmapInitRect.right - bitmapInitRect.left) {
-            rectLeft = bitmapInitRect.left;
-            rectRight = bitmapInitRect.right;
+        clipRectF.left = initMargin;
+        clipRectF.right = viewWidth - clipRectF.left;
+        if (clipRectF.right - clipRectF.left > bitmapInitRect.right - bitmapInitRect.left) {
+            clipRectF.left = bitmapInitRect.left;
+            clipRectF.right = bitmapInitRect.right;
         }
-        float clipHeight = (rectRight - rectLeft) / ratio;//裁剪区高度
-        rectTop = (viewHeight - clipHeight) / 2;
-        rectBottom = viewHeight - rectTop;
-        if (rectBottom - rectTop > bitmapInitRect.bottom - bitmapInitRect.top) {
-            rectTop = bitmapInitRect.top;
-            rectBottom = bitmapInitRect.bottom;
-            float clipWidth = (rectBottom - rectTop) * ratio;//裁剪去宽度
-            rectLeft = (viewWidth - clipWidth) / 2;
-            rectRight = viewWidth - rectLeft;
+        float clipHeight = (clipRectF.right - clipRectF.left) / ratio;//裁剪区高度
+        clipRectF.top = (viewHeight - clipHeight) / 2;
+        clipRectF.bottom = viewHeight - clipRectF.top;
+        if (clipRectF.bottom - clipRectF.top > bitmapInitRect.bottom - bitmapInitRect.top) {
+            clipRectF.top = bitmapInitRect.top;
+            clipRectF.bottom = bitmapInitRect.bottom;
+            float clipWidth = (clipRectF.bottom - clipRectF.top) * ratio;//裁剪去宽度
+            clipRectF.left = (viewWidth - clipWidth) / 2;
+            clipRectF.right = viewWidth - clipRectF.left;
         }
     }
 
@@ -328,150 +328,157 @@ public class CropCircleImageView extends AppCompatImageView {
      * 根据手指动作调整裁剪区
      */
     private void adjustDraw() {
-        if (!isScale) {
+        if (isScale) {
             //移动
-            if (clipEventRectF.top <= rectTop + oneMoveY && rectBottom + oneMoveY <= clipEventRectF.bottom && rectTop + oneMoveY >= 0 && rectBottom + oneMoveY <= viewHeight) {
-                rectTop += oneMoveY;
-                rectBottom += oneMoveY;
+            if (clipEventRectF.top <= clipRectF.top + oneMoveY && clipRectF.bottom + oneMoveY <= clipEventRectF.bottom ) {
+                clipRectF.top += oneMoveY;
+                clipRectF.bottom += oneMoveY;
             }
-            if (clipEventRectF.left <= rectLeft + oneMoveX && rectRight + oneMoveX <= clipEventRectF.right&&0 <= rectLeft + oneMoveX && rectRight + oneMoveX <= viewWidth) {
-                rectLeft += oneMoveX;
-                rectRight += oneMoveX;
+            if (clipEventRectF.left <= clipRectF.left + oneMoveX && clipRectF.right + oneMoveX <= clipEventRectF.right) {
+                clipRectF.left += oneMoveX;
+                clipRectF.right += oneMoveX;
             }
 
+            //裁剪区域已在屏幕边缘，移动图片
+            if (clipRectF.top + oneMoveY <= 0 ||  clipRectF.bottom + oneMoveY >= viewHeight) {
+                bitmapMove(0, -oneMoveY);
+            }
+            if (clipRectF.right + oneMoveX >= viewWidth || clipRectF.left + oneMoveX <= 0){
+                bitmapMove(-oneMoveX,0);
+            }
         } else {
             //缩放
             switch (scaleType) {
                 case SCALE_LEFTBOTTOM://缩放左下角
                     if (isConstant) {
                         //固定比例
-                        if (bitmapInitRect.left <= rectLeft + oneMoveX * ratio && rectBottom - oneMoveX * ratio <= bitmapInitRect.bottom
-                                && rectRight - (rectLeft + oneMoveX) >= clipMinSize && rectBottom - oneMoveX - rectTop >= clipMinSize) {
-                            rectLeft += oneMoveX * ratio;
-                            rectBottom -= oneMoveX;
+                        if (bitmapInitRect.left <= clipRectF.left + oneMoveX * ratio && clipRectF.bottom - oneMoveX * ratio <= bitmapInitRect.bottom
+                                && clipRectF.right - (clipRectF.left + oneMoveX) >= clipMinSize && clipRectF.bottom - oneMoveX - clipRectF.top >= clipMinSize) {
+                            clipRectF.left += oneMoveX * ratio;
+                            clipRectF.bottom -= oneMoveX;
                         }
                     } else {
                         //不固定比例
-                        if (bitmapInitRect.left <= rectLeft + oneMoveX && rectBottom + oneMoveY <= bitmapInitRect.bottom
-                                && rectRight - (rectLeft + oneMoveX) >= clipMinSize && rectBottom + oneMoveY - rectTop >= clipMinSize) {
-                            rectLeft += oneMoveX;
-                            rectBottom += oneMoveY;
+                        if (bitmapInitRect.left <= clipRectF.left + oneMoveX && clipRectF.bottom + oneMoveY <= bitmapInitRect.bottom
+                                && clipRectF.right - (clipRectF.left + oneMoveX) >= clipMinSize && clipRectF.bottom + oneMoveY - clipRectF.top >= clipMinSize) {
+                            clipRectF.left += oneMoveX;
+                            clipRectF.bottom += oneMoveY;
                         }
                     }
                     break;
                 case SCALE_LEFTTOP://缩放左上角
                     if (isConstant) {
                         //固定比例
-                        if (bitmapInitRect.left <= rectLeft + oneMoveX * ratio && bitmapInitRect.top <= rectTop + oneMoveX
-                                && rectRight - (rectLeft + oneMoveX * ratio) >= clipMinSize && rectBottom - (oneMoveX + rectTop) >= clipMinSize) {
-                            rectLeft += oneMoveX * ratio;
-                            rectTop += oneMoveX;
+                        if (bitmapInitRect.left <= clipRectF.left + oneMoveX * ratio && bitmapInitRect.top <= clipRectF.top + oneMoveX
+                                && clipRectF.right - (clipRectF.left + oneMoveX * ratio) >= clipMinSize && clipRectF.bottom - (oneMoveX + clipRectF.top) >= clipMinSize) {
+                            clipRectF.left += oneMoveX * ratio;
+                            clipRectF.top += oneMoveX;
                         }
                     } else {
                         //不固定比例
-                        if (bitmapInitRect.left <= rectLeft + oneMoveX && bitmapInitRect.top <= rectTop + oneMoveY
-                                && rectRight - (rectLeft + oneMoveX) >= clipMinSize && rectBottom - (oneMoveY + rectTop) >= clipMinSize) {
-                            rectLeft += oneMoveX;
-                            rectTop += oneMoveY;
+                        if (bitmapInitRect.left <= clipRectF.left + oneMoveX && bitmapInitRect.top <= clipRectF.top + oneMoveY
+                                && clipRectF.right - (clipRectF.left + oneMoveX) >= clipMinSize && clipRectF.bottom - (oneMoveY + clipRectF.top) >= clipMinSize) {
+                            clipRectF.left += oneMoveX;
+                            clipRectF.top += oneMoveY;
                         }
                     }
                     break;
                 case SCALE_RIGHTTOP://缩放右上角
                     if (isConstant) {
                         //固定比例
-                        if (rectRight + oneMoveX * ratio <= bitmapInitRect.right && bitmapInitRect.top <= rectTop - oneMoveX
-                                && (rectRight + oneMoveX * ratio) - rectLeft >= clipMinSize && rectBottom - (rectTop - oneMoveX) >= clipMinSize) {
-                            rectRight += oneMoveX * ratio;
-                            rectTop -= oneMoveX;
+                        if (clipRectF.right + oneMoveX * ratio <= bitmapInitRect.right && bitmapInitRect.top <= clipRectF.top - oneMoveX
+                                && (clipRectF.right + oneMoveX * ratio) - clipRectF.left >= clipMinSize && clipRectF.bottom - (clipRectF.top - oneMoveX) >= clipMinSize) {
+                            clipRectF.right += oneMoveX * ratio;
+                            clipRectF.top -= oneMoveX;
                         }
                     } else {
                         //不固定比例
-                        if (rectRight + oneMoveX <= bitmapInitRect.right && bitmapInitRect.top <= rectTop + oneMoveY
-                                && (rectRight + oneMoveX) - rectLeft >= clipMinSize && rectBottom - (rectTop + oneMoveY) >= clipMinSize) {
-                            rectRight += oneMoveX;
-                            rectTop += oneMoveY;
+                        if (clipRectF.right + oneMoveX <= bitmapInitRect.right && bitmapInitRect.top <= clipRectF.top + oneMoveY
+                                && (clipRectF.right + oneMoveX) - clipRectF.left >= clipMinSize && clipRectF.bottom - (clipRectF.top + oneMoveY) >= clipMinSize) {
+                            clipRectF.right += oneMoveX;
+                            clipRectF.top += oneMoveY;
                         }
                     }
                     break;
                 case SCALE_RIGHTBOTTOM://缩放右下角
                     if (isConstant) {
                         //固定比例
-                        if (rectRight + oneMoveX * ratio <= bitmapInitRect.right && rectBottom + oneMoveX <= bitmapInitRect.bottom
-                                && (rectRight + oneMoveX * ratio) - rectLeft >= clipMinSize && (rectBottom + oneMoveX) - rectTop >= clipMinSize) {
-                            rectRight += oneMoveX * ratio;
-                            rectBottom += oneMoveX;
+                        if (clipRectF.right + oneMoveX * ratio <= bitmapInitRect.right && clipRectF.bottom + oneMoveX <= bitmapInitRect.bottom
+                                && (clipRectF.right + oneMoveX * ratio) - clipRectF.left >= clipMinSize && (clipRectF.bottom + oneMoveX) - clipRectF.top >= clipMinSize) {
+                            clipRectF.right += oneMoveX * ratio;
+                            clipRectF.bottom += oneMoveX;
                         }
                     } else {
                         //不固定比例
-                        if (rectRight + oneMoveX <= bitmapInitRect.right && rectBottom + oneMoveY <= bitmapInitRect.bottom
-                                && (rectRight + oneMoveX) - rectLeft >= clipMinSize && (rectBottom + oneMoveY) - rectTop >= clipMinSize) {
-                            rectRight += oneMoveX;
-                            rectBottom += oneMoveY;
+                        if (clipRectF.right + oneMoveX <= bitmapInitRect.right && clipRectF.bottom + oneMoveY <= bitmapInitRect.bottom
+                                && (clipRectF.right + oneMoveX) - clipRectF.left >= clipMinSize && (clipRectF.bottom + oneMoveY) - clipRectF.top >= clipMinSize) {
+                            clipRectF.right += oneMoveX;
+                            clipRectF.bottom += oneMoveY;
                         }
                     }
                     break;
                 case SCALE_LEFT://缩放左边
                     if (isConstant) {
                         //固定比例
-                        if (bitmapInitRect.left <= rectLeft + oneMoveX * ratio && bitmapInitRect.top <= rectTop + oneMoveX / 2 && rectBottom - oneMoveX / 2 <= bitmapInitRect.bottom
-                                && rectRight - (rectLeft + oneMoveX * ratio) >= clipMinSize && (rectBottom - oneMoveX / 2) - (rectTop + oneMoveX / 2) >= clipMinSize) {
-                            rectLeft += oneMoveX * ratio;
-                            rectTop += oneMoveX / 2;
-                            rectBottom -= oneMoveX / 2;
+                        if (bitmapInitRect.left <= clipRectF.left + oneMoveX * ratio && bitmapInitRect.top <= clipRectF.top + oneMoveX / 2 && clipRectF.bottom - oneMoveX / 2 <= bitmapInitRect.bottom
+                                && clipRectF.right - (clipRectF.left + oneMoveX * ratio) >= clipMinSize && (clipRectF.bottom - oneMoveX / 2) - (clipRectF.top + oneMoveX / 2) >= clipMinSize) {
+                            clipRectF.left += oneMoveX * ratio;
+                            clipRectF.top += oneMoveX / 2;
+                            clipRectF.bottom -= oneMoveX / 2;
                         }
                     } else {
                         //不固定比例
-                        if (bitmapInitRect.left <= rectLeft + oneMoveX
-                                && rectRight - (rectLeft + oneMoveX) >= clipMinSize)
-                            rectLeft += oneMoveX;
+                        if (bitmapInitRect.left <= clipRectF.left + oneMoveX
+                                && clipRectF.right - (clipRectF.left + oneMoveX) >= clipMinSize)
+                            clipRectF.left += oneMoveX;
                     }
                     break;
                 case SCALE_TOP://缩放上边
                     if (isConstant) {
                         //固定比例
-                        if (rectRight - (oneMoveY * ratio) / 2 <= bitmapInitRect.right && bitmapInitRect.top <= rectTop + oneMoveY && bitmapInitRect.left <= rectLeft + (oneMoveY * ratio) / 2
-                                && (rectRight - (oneMoveY * ratio) / 2) - (rectLeft + (oneMoveY * ratio) / 2) >= clipMinSize && rectBottom - (rectTop + oneMoveY) >= clipMinSize) {
-                            rectRight -= (oneMoveY * ratio) / 2;
-                            rectTop += oneMoveY;
-                            rectLeft += (oneMoveY * ratio) / 2;
+                        if (clipRectF.right - (oneMoveY * ratio) / 2 <= bitmapInitRect.right && bitmapInitRect.top <= clipRectF.top + oneMoveY && bitmapInitRect.left <= clipRectF.left + (oneMoveY * ratio) / 2
+                                && (clipRectF.right - (oneMoveY * ratio) / 2) - (clipRectF.left + (oneMoveY * ratio) / 2) >= clipMinSize && clipRectF.bottom - (clipRectF.top + oneMoveY) >= clipMinSize) {
+                            clipRectF.right -= (oneMoveY * ratio) / 2;
+                            clipRectF.top += oneMoveY;
+                            clipRectF.left += (oneMoveY * ratio) / 2;
                         }
                     } else {
                         //不固定比例
-                        if (bitmapInitRect.top <= rectTop + oneMoveY
-                                && rectBottom - (rectTop + oneMoveY) >= clipMinSize)
-                            rectTop += oneMoveY;
+                        if (bitmapInitRect.top <= clipRectF.top + oneMoveY
+                                && clipRectF.bottom - (clipRectF.top + oneMoveY) >= clipMinSize)
+                            clipRectF.top += oneMoveY;
                     }
                     break;
                 case SCALE_RIGHT://缩放右边
                     if (isConstant) {
                         //固定比例
-                        if (rectRight + oneMoveX * ratio <= bitmapInitRect.right && rectBottom + oneMoveX / 2 <= bitmapInitRect.bottom && bitmapInitRect.top <= rectTop - oneMoveX / 2
-                                && (rectRight + oneMoveX * ratio) - rectLeft >= clipMinSize && (rectBottom + oneMoveX / 2) - (rectTop - oneMoveX / 2) >= clipMinSize) {
-                            rectRight += oneMoveX * ratio;
-                            rectBottom += oneMoveX / 2;
-                            rectTop -= oneMoveX / 2;
+                        if (clipRectF.right + oneMoveX * ratio <= bitmapInitRect.right && clipRectF.bottom + oneMoveX / 2 <= bitmapInitRect.bottom && bitmapInitRect.top <= clipRectF.top - oneMoveX / 2
+                                && (clipRectF.right + oneMoveX * ratio) - clipRectF.left >= clipMinSize && (clipRectF.bottom + oneMoveX / 2) - (clipRectF.top - oneMoveX / 2) >= clipMinSize) {
+                            clipRectF.right += oneMoveX * ratio;
+                            clipRectF.bottom += oneMoveX / 2;
+                            clipRectF.top -= oneMoveX / 2;
                         }
                     } else {
                         //不固定比例
-                        if (rectRight + oneMoveX <= bitmapInitRect.right
-                                && (rectRight + oneMoveX) - rectLeft >= clipMinSize)
-                            rectRight += oneMoveX;
+                        if (clipRectF.right + oneMoveX <= bitmapInitRect.right
+                                && (clipRectF.right + oneMoveX) - clipRectF.left >= clipMinSize)
+                            clipRectF.right += oneMoveX;
                     }
                     break;
                 case SCALE_BOTTOM://缩放下边
                     if (isConstant) {
                         //固定比例
-                        if (rectRight + (oneMoveY * ratio) / 2 <= bitmapInitRect.right && rectBottom + oneMoveY <= bitmapInitRect.bottom && bitmapInitRect.left <= rectLeft - (oneMoveY * ratio) / 2
-                                && (rectRight + (oneMoveY * ratio) / 2) - (rectLeft - (oneMoveY * ratio) / 2) >= clipMinSize && (rectBottom + oneMoveY) - rectTop >= clipMinSize) {
-                            rectRight += (oneMoveY * ratio) / 2;
-                            rectBottom += oneMoveY;
-                            rectLeft -= (oneMoveY * ratio) / 2;
+                        if (clipRectF.right + (oneMoveY * ratio) / 2 <= bitmapInitRect.right && clipRectF.bottom + oneMoveY <= bitmapInitRect.bottom && bitmapInitRect.left <= clipRectF.left - (oneMoveY * ratio) / 2
+                                && (clipRectF.right + (oneMoveY * ratio) / 2) - (clipRectF.left - (oneMoveY * ratio) / 2) >= clipMinSize && (clipRectF.bottom + oneMoveY) - clipRectF.top >= clipMinSize) {
+                            clipRectF.right += (oneMoveY * ratio) / 2;
+                            clipRectF.bottom += oneMoveY;
+                            clipRectF.left -= (oneMoveY * ratio) / 2;
                         }
                     } else {
                         //不固定比例
-                        if (rectBottom + oneMoveY <= bitmapInitRect.bottom
-                                && (rectBottom + oneMoveY) - rectTop >= clipMinSize)
-                            rectBottom += oneMoveY;
+                        if (clipRectF.bottom + oneMoveY <= bitmapInitRect.bottom
+                                && (clipRectF.bottom + oneMoveY) - clipRectF.top >= clipMinSize)
+                            clipRectF.bottom += oneMoveY;
                     }
                     break;
             }
@@ -485,24 +492,24 @@ public class CropCircleImageView extends AppCompatImageView {
      */
     private int actionScaleType() {
         int type = 0;
-        if (oneDownX > rectRight - (rectRight - rectLeft) / 3) {
+        if (oneDownX > clipRectF.right - (clipRectF.right - clipRectF.left) / 3) {
             //点击的右部分
-            if (oneDownY > rectBottom - (rectBottom - rectTop) / 3) {
+            if (oneDownY > clipRectF.bottom - (clipRectF.bottom - clipRectF.top) / 3) {
                 //点击的下部分
                 type = SCALE_RIGHTBOTTOM;
-            } else if (oneDownY < rectTop + (rectBottom - rectTop) / 3) {
+            } else if (oneDownY < clipRectF.top + (clipRectF.bottom - clipRectF.top) / 3) {
                 //点击的上部分
                 type = SCALE_RIGHTTOP;
             } else {
                 //点击中间部分
                 type = SCALE_RIGHT;
             }
-        } else if (oneDownX < rectLeft + (rectRight - rectLeft) / 3) {
+        } else if (oneDownX < clipRectF.left + (clipRectF.right - clipRectF.left) / 3) {
             //点击的左部分
-            if (oneDownY > rectBottom - (rectBottom - rectTop) / 3) {
+            if (oneDownY > clipRectF.bottom - (clipRectF.bottom - clipRectF.top) / 3) {
                 //点击的下部分
                 type = SCALE_LEFTBOTTOM;
-            } else if (oneDownY < rectTop + (rectBottom - rectTop) / 3) {
+            } else if (oneDownY < clipRectF.top + (clipRectF.bottom - clipRectF.top) / 3) {
                 //点击的上部分
                 type = SCALE_LEFTTOP;
             } else {
@@ -511,10 +518,10 @@ public class CropCircleImageView extends AppCompatImageView {
             }
         } else {
             //点击的水平中间部分
-            if (oneDownY > rectBottom - (rectBottom - rectTop) / 3) {
+            if (oneDownY > clipRectF.bottom - (clipRectF.bottom - clipRectF.top) / 3) {
                 //点击的下部分
                 type = SCALE_BOTTOM;
-            } else if (oneDownY < rectTop + (rectBottom - rectTop) / 3) {
+            } else if (oneDownY < clipRectF.top + (clipRectF.bottom - clipRectF.top) / 3) {
                 //点击的上部分
                 type = SCALE_TOP;
             }
@@ -522,14 +529,6 @@ public class CropCircleImageView extends AppCompatImageView {
         return type;
     }
 
-    /**
-     * 判断按下的位置是缩放还是移动
-     *
-     * @return
-     */
-    private boolean actionIsScale() {
-        return oneDownX > rectLeft && oneDownX < rectRight && oneDownY > rectTop && oneDownY < rectBottom ? false : true;
-    }
 
     /**
      * 绘制背景
@@ -577,11 +576,11 @@ public class CropCircleImageView extends AppCompatImageView {
         switch (clipType) {
             case TYPEFIXEDOVAL:
             case TYPEOVAL: //椭圆裁剪
-                canvas.drawOval(new RectF(rectF.left + clipBorderWidth / 2, rectF.top + clipBorderWidth / 2, rectF.right - clipBorderWidth / 2, rectBottom - clipBorderWidth / 2), borderPaint);
+                canvas.drawOval(new RectF(rectF.left + clipBorderWidth / 2, rectF.top + clipBorderWidth / 2, rectF.right - clipBorderWidth / 2, clipRectF.bottom - clipBorderWidth / 2), borderPaint);
                 break;
             case TYPEFIXEDOSQUARE:
             case TYPESQUARE://矩形裁剪
-                canvas.drawRect(new RectF(rectF.left + clipBorderWidth / 2, rectF.top + clipBorderWidth / 2, rectF.right - clipBorderWidth / 2, rectBottom - clipBorderWidth / 2), borderPaint);
+                canvas.drawRect(new RectF(rectF.left + clipBorderWidth / 2, rectF.top + clipBorderWidth / 2, rectF.right - clipBorderWidth / 2, clipRectF.bottom - clipBorderWidth / 2), borderPaint);
                 break;
         }
     }
