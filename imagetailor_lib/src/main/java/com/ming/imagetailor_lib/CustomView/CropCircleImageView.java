@@ -243,15 +243,6 @@ public class CropCircleImageView extends AppCompatImageView {
         } else {
             clipEventRectF.set(bitmapRectF);
         }
-
-    }
-
-
-    /**
-     * 图片移动
-     */
-    private void bitmapMove(float dx, float dy) {
-        matrix.postTranslate(dx, dy);
     }
 
     @Override
@@ -330,7 +321,7 @@ public class CropCircleImageView extends AppCompatImageView {
     private void adjustDraw() {
         if (isScale) {
             //移动
-            if (clipEventRectF.top <= clipRectF.top + oneMoveY && clipRectF.bottom + oneMoveY <= clipEventRectF.bottom ) {
+            if (clipEventRectF.top <= clipRectF.top + oneMoveY && clipRectF.bottom + oneMoveY <= clipEventRectF.bottom) {
                 clipRectF.top += oneMoveY;
                 clipRectF.bottom += oneMoveY;
             }
@@ -340,11 +331,21 @@ public class CropCircleImageView extends AppCompatImageView {
             }
 
             //裁剪区域已在屏幕边缘，移动图片
-            if (clipRectF.top + oneMoveY <= 0 ||  clipRectF.bottom + oneMoveY >= viewHeight) {
-                bitmapMove(0, -oneMoveY);
+            if (clipRectF.top + oneMoveY <= 0 || clipRectF.bottom + oneMoveY >= viewHeight) {
+                Log.e("测试", bitmapRectF.toString());
+                if (bitmapRectF.height() > viewHeight && bitmapRectF.top - oneMoveY <= 0 && bitmapRectF.bottom - oneMoveY >= viewHeight) {
+                    matrix.postTranslate(0, -oneMoveY);
+                    bitmapRectF.set(0f, 0f, drawable.getIntrinsicWidth(), drawable.getIntrinsicHeight());
+                    matrix.mapRect(bitmapRectF);
+                    Log.e("测试1", bitmapRectF.toString());
+                }
             }
-            if (clipRectF.right + oneMoveX >= viewWidth || clipRectF.left + oneMoveX <= 0){
-                bitmapMove(-oneMoveX,0);
+            if (clipRectF.right + oneMoveX >= viewWidth || clipRectF.left + oneMoveX <= 0) {
+                if (bitmapRectF.width() > viewWidth){
+                    matrix.postTranslate(-oneMoveX, 0);
+                    bitmapRectF.set(0f, 0f, drawable.getIntrinsicWidth(), drawable.getIntrinsicHeight());
+                    matrix.mapRect(bitmapRectF);
+                }
             }
         } else {
             //缩放
@@ -528,7 +529,6 @@ public class CropCircleImageView extends AppCompatImageView {
         }
         return type;
     }
-
 
     /**
      * 绘制背景
