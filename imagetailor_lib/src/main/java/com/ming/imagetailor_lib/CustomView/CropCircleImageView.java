@@ -23,6 +23,8 @@ import android.util.Log;
 import android.util.TypedValue;
 import android.view.MotionEvent;
 
+import static android.icu.lang.UCharacter.GraphemeClusterBreak.T;
+
 /**
  * Author MingRuQi
  * E-mail mingruqi@sina.cn
@@ -129,18 +131,8 @@ public class CropCircleImageView extends AppCompatImageView {
     private RectF clipRectF;
     //裁剪活动区域矩形
     private RectF clipEventRectF;
-    //缩小临界值
-    private float shrinkCritical;
-    //放大临界值
-    private float magnifyCritical;
-    //最小裁剪尺寸
-    private float minClipSize = dp2px(200);
-    //裁剪区缩放大小
-    private float clipScaleSize;
-    //裁剪区缩放比例
-    private float clipScaleRatio;
+
     private Matrix matrix;
-    private ValueAnimator animator;
     Drawable drawable = null;
 
     public CropCircleImageView(Context context) {
@@ -199,7 +191,6 @@ public class CropCircleImageView extends AppCompatImageView {
                 oneNowMoveX = oneDownX = event.getX();
                 oneNowMoveY = oneDownY = event.getY();
                 isScale = clipRectF.contains(oneDownX, oneDownY);
-                Log.e("adsf", String.valueOf(isScale));
                 //获取缩放缩放模式
                 scaleType = actionScaleType();
                 break;
@@ -215,23 +206,64 @@ public class CropCircleImageView extends AppCompatImageView {
                 NOWSTATE = ACTIONUP;
                 oneUpX = event.getX();
                 oneUpY = event.getY();
-                bitmapZoom(clipEventRectF.right);
+                Zoom();
                 break;
         }
         invalidate();//重绘
         return true;
     }
 
+    /**
+     * 缩放--图片与裁剪区域 计算
+     */
+    private void Zoom() {
+        ValueAnimator animator = ValueAnimator.ofInt(0, 100);
+        animator.setDuration(1000);
+        animator.setRepeatCount(0);
+        animator.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
+            @Override
+            public void onAnimationUpdate(ValueAnimator animation) {
+                int currentValue = (Integer) animation.getAnimatedValue();
+
+                Log.e("ewew", String.valueOf(currentValue));
+            }
+        });
+        animator.start();
+       /* final float factor = (magnifyCritical - (clipRectF.right - clipRectF.left) )/ 100;//比例因子
+        ValueAnimator animator = ValueAnimator.ofInt(0, 100);
+        animator.setDuration(1000);
+        animator.setRepeatCount(0);
+        animator.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
+            @Override
+            public void onAnimationUpdate(ValueAnimator animation) {
+                int currentValue = (Integer) animation.getAnimatedValue();
+
+                Log.e("ewew", String.valueOf(factor));
+                switch (scaleType) {
+                    case SCALE_LEFTBOTTOM://缩放左下角
+                        clipRectF.left -= factor * currentValue;
+                        clipRectF.bottom += factor * currentValue;
+                        //bitmapZoom(1.1f, px, py);
+                        break;
+                    case SCALE_LEFTTOP://缩放左上角
+                        bitmapZoom(1.1f, clipRectF.right, clipRectF.bottom);
+                        break;
+                }
+            }
+        });
+        animator.start();*/
+    }
 
     /**
      * 图片缩放
      */
-    private void bitmapZoom(float scale) {
-        if (viewWidth <= (bitmapInitRect.right - bitmapInitRect.left)) {
+    private void bitmapZoom(float scale, float px, float py) {
+        matrix.postScale(scale, scale, px, py);
+       /* if (viewWidth <= (bitmapInitRect.right - bitmapInitRect.left)) {
             matrix.postScale(1.1f, 1.1f, scale, viewHeight / 2);
-        } else {
+        } else if (viewHeight <= (bitmapInitRect.bottom -bitmapInitRect.top)) {
             matrix.postScale(1.1f, 1.1f, viewWidth / 2, scale);
-        }
+        }*/
         bitmapRectF.set(0f, 0f, drawable.getIntrinsicWidth(), drawable.getIntrinsicHeight());
         matrix.mapRect(bitmapRectF);
         if (bitmapRectF.contains(0, 0, viewWidth, viewHeight)) {
@@ -253,8 +285,6 @@ public class CropCircleImageView extends AppCompatImageView {
             viewWidth = MeasureSpec.getSize(widthMeasureSpec);
             //获取初始高度
             viewHeight = MeasureSpec.getSize(heightMeasureSpec);
-            shrinkCritical = viewWidth / 2;
-            magnifyCritical = viewWidth / 2 + dp2px(10);
         }
     }
 
@@ -332,16 +362,14 @@ public class CropCircleImageView extends AppCompatImageView {
 
             //裁剪区域已在屏幕边缘，移动图片
             if (clipRectF.top + oneMoveY <= 0 || clipRectF.bottom + oneMoveY >= viewHeight) {
-                Log.e("测试", bitmapRectF.toString());
                 if (bitmapRectF.height() > viewHeight && bitmapRectF.top - oneMoveY <= 0 && bitmapRectF.bottom - oneMoveY >= viewHeight) {
                     matrix.postTranslate(0, -oneMoveY);
                     bitmapRectF.set(0f, 0f, drawable.getIntrinsicWidth(), drawable.getIntrinsicHeight());
                     matrix.mapRect(bitmapRectF);
-                    Log.e("测试1", bitmapRectF.toString());
                 }
             }
             if (clipRectF.right + oneMoveX >= viewWidth || clipRectF.left + oneMoveX <= 0) {
-                if (bitmapRectF.width() > viewWidth){
+                if (bitmapRectF.width() > viewWidth && bitmapRectF.left - oneMoveX <= 0 && bitmapRectF.right - oneMoveX >= viewWidth) {
                     matrix.postTranslate(-oneMoveX, 0);
                     bitmapRectF.set(0f, 0f, drawable.getIntrinsicWidth(), drawable.getIntrinsicHeight());
                     matrix.mapRect(bitmapRectF);
