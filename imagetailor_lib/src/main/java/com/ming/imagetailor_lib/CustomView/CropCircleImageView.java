@@ -131,9 +131,12 @@ public class CropCircleImageView extends AppCompatImageView {
     private RectF clipRectF;
     //裁剪活动区域矩形
     private RectF clipEventRectF;
+    //放大临界值
+    private float magnifyCritical;
 
     private Matrix matrix;
     Drawable drawable = null;
+    private ValueAnimator.AnimatorUpdateListener animatorUpdateListener;
 
     public CropCircleImageView(Context context) {
         this(context, null);
@@ -217,41 +220,26 @@ public class CropCircleImageView extends AppCompatImageView {
      * 缩放--图片与裁剪区域 计算
      */
     private void Zoom() {
-        ValueAnimator animator = ValueAnimator.ofInt(0, 100);
+        float scale = magnifyCritical / clipRectF.width();
+
+        RectF rectF = new RectF();
+        rectF.set(clipRectF);
+        Log.e("rectF", String.valueOf(rectF.toString()));
+        ValueAnimator animator = ValueAnimator.ofFloat(1, scale);
+        Log.e("scale", String.valueOf(scale));
         animator.setDuration(1000);
         animator.setRepeatCount(0);
-        animator.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
-            @Override
-            public void onAnimationUpdate(ValueAnimator animation) {
-                int currentValue = (Integer) animation.getAnimatedValue();
-
-                Log.e("ewew", String.valueOf(currentValue));
-            }
-        });
-        animator.start();
-       /* final float factor = (magnifyCritical - (clipRectF.right - clipRectF.left) )/ 100;//比例因子
-        ValueAnimator animator = ValueAnimator.ofInt(0, 100);
-        animator.setDuration(1000);
-        animator.setRepeatCount(0);
-        animator.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
-            @Override
-            public void onAnimationUpdate(ValueAnimator animation) {
-                int currentValue = (Integer) animation.getAnimatedValue();
-
-                Log.e("ewew", String.valueOf(factor));
-                switch (scaleType) {
-                    case SCALE_LEFTBOTTOM://缩放左下角
-                        clipRectF.left -= factor * currentValue;
-                        clipRectF.bottom += factor * currentValue;
-                        //bitmapZoom(1.1f, px, py);
-                        break;
-                    case SCALE_LEFTTOP://缩放左上角
-                        bitmapZoom(1.1f, clipRectF.right, clipRectF.bottom);
-                        break;
+        if (animatorUpdateListener == null) {
+            animatorUpdateListener = new ValueAnimator.AnimatorUpdateListener() {
+                @Override
+                public void onAnimationUpdate(ValueAnimator animation) {
+                    float currentValue = (float) animation.getAnimatedValue();
+                    Log.e("currentValue", String.valueOf(currentValue));
                 }
-            }
-        });
-        animator.start();*/
+            };
+        }
+        animator.addUpdateListener(animatorUpdateListener);
+        animator.start();
     }
 
     /**
@@ -285,6 +273,7 @@ public class CropCircleImageView extends AppCompatImageView {
             viewWidth = MeasureSpec.getSize(widthMeasureSpec);
             //获取初始高度
             viewHeight = MeasureSpec.getSize(heightMeasureSpec);
+            magnifyCritical = viewWidth / 2 + dp2px(10);
         }
     }
 
