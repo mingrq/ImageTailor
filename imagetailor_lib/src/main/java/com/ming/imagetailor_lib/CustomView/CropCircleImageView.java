@@ -19,11 +19,8 @@ import android.graphics.drawable.Drawable;
 import android.os.Build;
 import android.support.v7.widget.AppCompatImageView;
 import android.util.AttributeSet;
-import android.util.Log;
 import android.util.TypedValue;
 import android.view.MotionEvent;
-
-import static android.icu.lang.UCharacter.GraphemeClusterBreak.T;
 
 /**
  * Author MingRuQi
@@ -133,10 +130,14 @@ public class CropCircleImageView extends AppCompatImageView {
     private RectF clipEventRectF;
     //放大临界值
     private float magnifyCritical;
+    //缩小临界值
+    private float shrinkCritical;
 
     private Matrix matrix;
     Drawable drawable = null;
     private ValueAnimator.AnimatorUpdateListener animatorUpdateListener;
+    private ValueAnimator animator;
+    private Matrix clipMatrix;
 
     public CropCircleImageView(Context context) {
         this(context, null);
@@ -153,6 +154,8 @@ public class CropCircleImageView extends AppCompatImageView {
         clipRectF = new RectF();
         bitmapInitRect = new RectF();
         bitmapRectF = new RectF();
+        animator = new ValueAnimator();
+        clipMatrix = new Matrix();
     }
 
     /**
@@ -209,7 +212,9 @@ public class CropCircleImageView extends AppCompatImageView {
                 NOWSTATE = ACTIONUP;
                 oneUpX = event.getX();
                 oneUpY = event.getY();
-                Zoom();
+                if (!isScale) {
+                    Zoom();
+                }
                 break;
         }
         invalidate();//重绘
@@ -220,21 +225,60 @@ public class CropCircleImageView extends AppCompatImageView {
      * 缩放--图片与裁剪区域 计算
      */
     private void Zoom() {
-        float scale = magnifyCritical / clipRectF.width();
 
-        RectF rectF = new RectF();
-        rectF.set(clipRectF);
-        Log.e("rectF", String.valueOf(rectF.toString()));
-        ValueAnimator animator = ValueAnimator.ofFloat(1, scale);
-        Log.e("scale", String.valueOf(scale));
-        animator.setDuration(1000);
+        liratio = 1f;
+        float scale = 0;
+        if (clipRectF.width() < magnifyCritical) {
+            scale = magnifyCritical / clipRectF.width();
+        }
+        if (clipRectF.width() > shrinkCritical) {
+            scale = shrinkCritical / clipRectF.width();
+        }
+        animator.setFloatValues(1, scale);
+        animator.setDuration(500);
         animator.setRepeatCount(0);
         if (animatorUpdateListener == null) {
             animatorUpdateListener = new ValueAnimator.AnimatorUpdateListener() {
+
+                private float py;
+                private float px;
+
                 @Override
                 public void onAnimationUpdate(ValueAnimator animation) {
                     float currentValue = (float) animation.getAnimatedValue();
-                    Log.e("currentValue", String.valueOf(currentValue));
+                    switch (scaleType) {
+                        case SCALE_LEFTBOTTOM:
+
+                            px = clipRectF.right;
+                            py = clipRectF.top;
+                            break;
+                        case SCALE_LEFTTOP:
+
+                            px = clipRectF.right;
+                            py = clipRectF.bottom;
+                            break;
+                        case SCALE_RIGHTTOP:
+
+                            px = clipRectF.left;
+                            py = clipRectF.bottom;
+                            break;
+                        case SCALE_RIGHTBOTTOM:
+
+                            px = clipRectF.left;
+                            py = clipRectF.top;
+                            break;
+                        case SCALE_LEFT:
+
+                            px = clipRectF.right;
+                            py = (clipRectF.bottom - clipRectF.top) / 2 + clipRectF.top;
+                            break;
+                    }
+                    float scaleRatio = currentValue / liratio;
+                    liratio = currentValue;
+                    clipMatrix.setScale(scaleRatio, scaleRatio, px, py);
+                    clipMatrix.mapRect(clipRectF);
+                    bitmapZoom(currentValue, px, py);
+                    invalidate();//重绘
                 }
             };
         }
@@ -245,13 +289,12 @@ public class CropCircleImageView extends AppCompatImageView {
     /**
      * 图片缩放
      */
+    float liratio = 1f;
+
     private void bitmapZoom(float scale, float px, float py) {
-        matrix.postScale(scale, scale, px, py);
-       /* if (viewWidth <= (bitmapInitRect.right - bitmapInitRect.left)) {
-            matrix.postScale(1.1f, 1.1f, scale, viewHeight / 2);
-        } else if (viewHeight <= (bitmapInitRect.bottom -bitmapInitRect.top)) {
-            matrix.postScale(1.1f, 1.1f, viewWidth / 2, scale);
-        }*/
+        float scaleRatio = scale / liratio;
+        liratio = scale;
+        matrix.postScale(scaleRatio, scaleRatio, px, py);
         bitmapRectF.set(0f, 0f, drawable.getIntrinsicWidth(), drawable.getIntrinsicHeight());
         matrix.mapRect(bitmapRectF);
         if (bitmapRectF.contains(0, 0, viewWidth, viewHeight)) {
@@ -273,7 +316,8 @@ public class CropCircleImageView extends AppCompatImageView {
             viewWidth = MeasureSpec.getSize(widthMeasureSpec);
             //获取初始高度
             viewHeight = MeasureSpec.getSize(heightMeasureSpec);
-            magnifyCritical = viewWidth / 2 + dp2px(10);
+            magnifyCritical = viewWidth / 2;
+            shrinkCritical = viewWidth / 2 + dp2px(10);
         }
     }
 
