@@ -19,6 +19,7 @@ import android.graphics.drawable.Drawable;
 import android.os.Build;
 import android.support.v7.widget.AppCompatImageView;
 import android.util.AttributeSet;
+import android.util.Log;
 import android.util.TypedValue;
 import android.view.MotionEvent;
 
@@ -225,7 +226,6 @@ public class CropCircleImageView extends AppCompatImageView {
      * 缩放--图片与裁剪区域 计算
      */
     private void Zoom() {
-
         liratio = 1f;
         float scale = 0;
         if (clipRectF.width() < magnifyCritical) {
@@ -237,6 +237,9 @@ public class CropCircleImageView extends AppCompatImageView {
         animator.setFloatValues(1, scale);
         animator.setDuration(500);
         animator.setRepeatCount(0);
+        Log.e("scale", String.valueOf(scale));
+        Log.e("clipRectF.init.width", String.valueOf(clipRectF.width()));
+        Log.e("clipRectF.init.height", String.valueOf(clipRectF.height()));
         if (animatorUpdateListener == null) {
             animatorUpdateListener = new ValueAnimator.AnimatorUpdateListener() {
 
@@ -248,7 +251,6 @@ public class CropCircleImageView extends AppCompatImageView {
                     float currentValue = (float) animation.getAnimatedValue();
                     switch (scaleType) {
                         case SCALE_LEFTBOTTOM:
-
                             px = clipRectF.right;
                             py = clipRectF.top;
                             break;
@@ -258,7 +260,6 @@ public class CropCircleImageView extends AppCompatImageView {
                             py = clipRectF.bottom;
                             break;
                         case SCALE_RIGHTTOP:
-
                             px = clipRectF.left;
                             py = clipRectF.bottom;
                             break;
@@ -268,15 +269,18 @@ public class CropCircleImageView extends AppCompatImageView {
                             py = clipRectF.top;
                             break;
                         case SCALE_LEFT:
-
                             px = clipRectF.right;
                             py = (clipRectF.bottom - clipRectF.top) / 2 + clipRectF.top;
                             break;
                     }
                     float scaleRatio = currentValue / liratio;
                     liratio = currentValue;
+                    Log.e("currentValue", String.valueOf(currentValue));
+                    Log.e("trt", String.valueOf(py)+" "+px);
                     clipMatrix.setScale(scaleRatio, scaleRatio, px, py);
                     clipMatrix.mapRect(clipRectF);
+                    Log.e("height", String.valueOf(clipRectF.height()));
+                    Log.e("width", String.valueOf(clipRectF.width()));
                     bitmapZoom(currentValue, px, py);
                     invalidate();//重绘
                 }
@@ -376,6 +380,8 @@ public class CropCircleImageView extends AppCompatImageView {
             clipRectF.left = (viewWidth - clipWidth) / 2;
             clipRectF.right = viewWidth - clipRectF.left;
         }
+        Log.e("test", String.valueOf(clipRectF.height()));
+        Log.e("test", String.valueOf(clipRectF.height()));
     }
 
     /**
@@ -416,8 +422,11 @@ public class CropCircleImageView extends AppCompatImageView {
                         //固定比例
                         if (bitmapInitRect.left <= clipRectF.left + oneMoveX * ratio && clipRectF.bottom - oneMoveX * ratio <= bitmapInitRect.bottom
                                 && clipRectF.right - (clipRectF.left + oneMoveX) >= clipMinSize && clipRectF.bottom - oneMoveX - clipRectF.top >= clipMinSize) {
-                            clipRectF.left += oneMoveX * ratio;
+                            clipRectF.left += oneMoveX ;
                             clipRectF.bottom -= oneMoveX;
+                            Log.e("ratio", String.valueOf(ratio));
+                            Log.e("tes", String.valueOf(clipRectF.height()));
+                            Log.e("tes1", String.valueOf(clipRectF.width()));
                         }
                     } else {
                         //不固定比例
