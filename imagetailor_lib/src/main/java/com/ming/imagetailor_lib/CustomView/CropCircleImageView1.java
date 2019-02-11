@@ -28,7 +28,7 @@ import android.view.MotionEvent;
  * E-mail mingruqi@sina.cn
  * DateTime 2018/12/27 14:13
  */
-public class CropCircleImageView extends AppCompatImageView {
+public class CropCircleImageView1 extends AppCompatImageView {
 
     private Context context;
     /**
@@ -69,21 +69,21 @@ public class CropCircleImageView extends AppCompatImageView {
     private float viewWidth;
     private float viewHeight;
     /*第一点按下的位置*/
-    private int oneDownX;
-    private int oneDownY;
+    private float oneDownX;
+    private float oneDownY;
     /*第一点抬起的位置*/
-    private int oneUpX;
-    private int oneUpY;
+    private float oneUpX;
+    private float oneUpY;
     /*图片初始位置属性*/
     RectF bitmapInitRect;
     /*图片初始位置属性*/
     RectF bitmapRectF;
     /*第一点滑动的距离*/
-    private int oneMoveY;
-    private int oneMoveX;
+    private float oneMoveY;
+    private float oneMoveX;
     /*第一点滑动的当前位置*/
-    private int oneNowMoveY;
-    private int oneNowMoveX;
+    private float oneNowMoveY;
+    private float oneNowMoveX;
     //裁剪区域初始边距
     private float initMargin = dp2px(40);
     /**
@@ -140,15 +140,15 @@ public class CropCircleImageView extends AppCompatImageView {
     private ValueAnimator animator;
     private Matrix clipMatrix;
 
-    public CropCircleImageView(Context context) {
+    public CropCircleImageView1(Context context) {
         this(context, null);
     }
 
-    public CropCircleImageView(Context context, AttributeSet attrs) {
+    public CropCircleImageView1(Context context, AttributeSet attrs) {
         this(context, attrs, 0);
     }
 
-    public CropCircleImageView(Context context, AttributeSet attrs, int defStyleAttr) {
+    public CropCircleImageView1(Context context, AttributeSet attrs, int defStyleAttr) {
         super(context, attrs, defStyleAttr);
         this.context = context;
         clipEventRectF = new RectF();
@@ -195,24 +195,24 @@ public class CropCircleImageView extends AppCompatImageView {
         switch (event.getAction()) {
             case MotionEvent.ACTION_DOWN:
                 NOWSTATE = ACTIONDOWN;
-                oneNowMoveX = oneDownX = (int) event.getX();
-                oneNowMoveY = oneDownY = (int) event.getY();
+                oneNowMoveX = oneDownX = event.getX();
+                oneNowMoveY = oneDownY = event.getY();
                 isScale = clipRectF.contains(oneDownX, oneDownY);
                 //获取缩放缩放模式
                 scaleType = actionScaleType();
                 break;
             case MotionEvent.ACTION_MOVE:
                 NOWSTATE = ACTIONMOVE;
-                oneMoveX = (int) (event.getX() - oneNowMoveX);
-                oneMoveY = (int) (event.getY() - oneNowMoveY);
-                oneNowMoveX = (int) event.getX();
-                oneNowMoveY = (int) event.getY();
+                oneMoveX = event.getX() - oneNowMoveX;
+                oneMoveY = event.getY() - oneNowMoveY;
+                oneNowMoveX = event.getX();
+                oneNowMoveY = event.getY();
                 adjustDraw();
                 break;
             case MotionEvent.ACTION_UP:
                 NOWSTATE = ACTIONUP;
-                oneUpX = (int) event.getX();
-                oneUpY = (int) event.getY();
+                oneUpX = event.getX();
+                oneUpY = event.getY();
                 if (!isScale) {
                     Zoom();
                 }
@@ -237,6 +237,9 @@ public class CropCircleImageView extends AppCompatImageView {
         animator.setFloatValues(1, scale);
         animator.setDuration(500);
         animator.setRepeatCount(0);
+        Log.e("scale", String.valueOf(scale));
+        Log.e("clipRectF.init.width", String.valueOf(clipRectF.width()));
+        Log.e("clipRectF.init.height", String.valueOf(clipRectF.height()));
         if (animatorUpdateListener == null) {
             animatorUpdateListener = new ValueAnimator.AnimatorUpdateListener() {
 
@@ -261,6 +264,7 @@ public class CropCircleImageView extends AppCompatImageView {
                             py = clipRectF.bottom;
                             break;
                         case SCALE_RIGHTBOTTOM:
+
                             px = clipRectF.left;
                             py = clipRectF.top;
                             break;
@@ -271,9 +275,12 @@ public class CropCircleImageView extends AppCompatImageView {
                     }
                     float scaleRatio = currentValue / liratio;
                     liratio = currentValue;
+                    Log.e("currentValue", String.valueOf(currentValue));
+                    Log.e("trt", String.valueOf(py)+" "+px);
                     clipMatrix.setScale(scaleRatio, scaleRatio, px, py);
                     clipMatrix.mapRect(clipRectF);
-
+                    Log.e("height", String.valueOf(clipRectF.height()));
+                    Log.e("width", String.valueOf(clipRectF.width()));
                     bitmapZoom(currentValue, px, py);
                     invalidate();//重绘
                 }
@@ -373,7 +380,8 @@ public class CropCircleImageView extends AppCompatImageView {
             clipRectF.left = (viewWidth - clipWidth) / 2;
             clipRectF.right = viewWidth - clipRectF.left;
         }
-
+        Log.e("test", String.valueOf(clipRectF.height()));
+        Log.e("test", String.valueOf(clipRectF.height()));
     }
 
     /**
@@ -382,8 +390,13 @@ public class CropCircleImageView extends AppCompatImageView {
     private void adjustDraw() {
         if (isScale) {
             //移动
-            if (clipEventRectF.left <= clipRectF.left + oneMoveX && clipRectF.right + oneMoveX <= clipEventRectF.right&&clipEventRectF.top <= clipRectF.top + oneMoveY && clipRectF.bottom + oneMoveY <= clipEventRectF.bottom) {
-                clipRectF.offset(oneMoveX, oneMoveY);
+            if (clipEventRectF.top <= clipRectF.top + oneMoveY && clipRectF.bottom + oneMoveY <= clipEventRectF.bottom) {
+                clipRectF.top += oneMoveY;
+                clipRectF.bottom += oneMoveY;
+            }
+            if (clipEventRectF.left <= clipRectF.left + oneMoveX && clipRectF.right + oneMoveX <= clipEventRectF.right) {
+                clipRectF.left += oneMoveX;
+                clipRectF.right += oneMoveX;
             }
 
             //裁剪区域已在屏幕边缘，移动图片
@@ -403,7 +416,6 @@ public class CropCircleImageView extends AppCompatImageView {
             }
         } else {
             //缩放
-            Log.e("clipRectF", clipRectF.toString());
             switch (scaleType) {
                 case SCALE_LEFTBOTTOM://缩放左下角
                     if (isConstant) {
@@ -412,6 +424,9 @@ public class CropCircleImageView extends AppCompatImageView {
                                 && clipRectF.right - (clipRectF.left + oneMoveX) >= clipMinSize && clipRectF.bottom - oneMoveX - clipRectF.top >= clipMinSize) {
                             clipRectF.left += oneMoveX ;
                             clipRectF.bottom -= oneMoveX;
+                            Log.e("ratio", String.valueOf(ratio));
+                            Log.e("tes", String.valueOf(clipRectF.height()));
+                            Log.e("tes1", String.valueOf(clipRectF.width()));
                         }
                     } else {
                         //不固定比例
@@ -539,11 +554,6 @@ public class CropCircleImageView extends AppCompatImageView {
                     break;
             }
         }
-
-        Log.e("oneMoveX", String.valueOf(oneMoveX));
-        Log.e("clipRectF-1", clipRectF.toString());
-        Log.e("clipRectF-height", String.valueOf(clipRectF.height()));
-        Log.e("clipRectF-width", String.valueOf(clipRectF.width()));
     }
 
     /**
@@ -743,7 +753,7 @@ public class CropCircleImageView extends AppCompatImageView {
             int width = rect.right - rect.left;
             int height = rect.bottom - rect.top;
             int color = 0;
-            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.HONEYCOMB) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB) {
                 color = ((ColorDrawable) drawable).getColor();
             }
             Bitmap bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
